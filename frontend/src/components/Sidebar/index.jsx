@@ -14,10 +14,12 @@ function Sidebar({ ativo, usuario }) {
 
   const itensMenu = isAdmin(usuario)
     ? itensMenuAdmin
-    : itensMenuAdmin.filter((item) =>
-        item.href === "/visao-geral" ||
-        item.href === "/minha-escala" ||
-        item.href === "/checklist"
+    : itensMenuAdmin.filter(
+        (item) =>
+          item.href === "/visao-geral" ||
+          item.href === "/minha-escala" ||
+          item.href === "/checklist" ||
+          item.href === "/tarefas"
       );
 
   return (
