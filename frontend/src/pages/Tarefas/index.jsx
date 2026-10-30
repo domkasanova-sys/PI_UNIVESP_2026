@@ -33,6 +33,7 @@ function Tarefas() {
         funcionario_id: item.funcionario_id,
         prazo: formatarDataBR(item.prazo),
         finalizado: Boolean(item.finalizado),
+        observacao: item.observacao || "",
         prazoInput: item.prazo ? item.prazo.substring(0, 10) : "",
       }));
 
@@ -60,6 +61,7 @@ function Tarefas() {
         funcionario_id: item.funcionario_id,
         prazo: formatarDataBR(item.prazo),
         finalizado: Boolean(item.finalizado),
+        observacao: item.observacao || "",
         prazoInput: item.prazo ? item.prazo.substring(0, 10) : "",
       }));
 
@@ -237,6 +239,7 @@ function Tarefas() {
               <th className="th">Responsável</th>
               <th className="th">Prazo</th>
               <th className="th">Finalizada</th>
+              <th className="th">Observação</th>
               <th className="th">Ações</th>
             </tr>
           </thead>
@@ -248,6 +251,7 @@ function Tarefas() {
                   t.titulo.toLowerCase().includes(termoBusca) ||
                   t.descricao.toLowerCase().includes(termoBusca) ||
                   t.responsavel.toLowerCase().includes(termoBusca) ||
+                  t.observacao.toLowerCase().includes(termoBusca) ||
                   t.finalizado.toString().includes(termoBusca)
                 );
               })
@@ -258,6 +262,9 @@ function Tarefas() {
                   <td className="td">{tarefaAtual.responsavel}</td>
                   <td className="td">{tarefaAtual.prazo}</td>
                   <td className="td">{tarefaAtual.finalizado ? "Sim" : "Não"}</td>
+                  <td className="td tarefaObservacaoCell">
+                    {tarefaAtual.observacao || "Sem observações"}
+                  </td>
                   <td className="td">
                     <div className="acoes">
                       <button
@@ -289,7 +296,7 @@ function Tarefas() {
 
             {tarefas.length === 0 && (
               <tr className="tabelaLinha">
-                <td className="td" colSpan={6} style={{ color: "#777" }}>
+                <td className="td" colSpan={7} style={{ color: "#777" }}>
                   Nenhuma tarefa cadastrada
                 </td>
               </tr>

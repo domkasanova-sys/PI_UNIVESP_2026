@@ -145,6 +145,13 @@
   color: #333;
 }
 
+.tarefaObservacaoCell {
+  min-width: 180px;
+  max-width: 280px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* BOTÕES */
 .acoes {
   display: flex;
