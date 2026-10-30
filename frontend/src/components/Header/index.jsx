@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import avatarUser from "../../assets/avatar.png";
+import { getProfilePhotoUrl } from "../../utils/profilePhoto";
 import "./index.css";
 
 function Header({ title, previousScreen, nextScreen, usuario = null }) {
@@ -44,7 +45,13 @@ function Header({ title, previousScreen, nextScreen, usuario = null }) {
           </div>
 
           <div id="avatarUsuario">
-            <img src={avatarUser} alt="Avatar" />
+            <img
+              src={getProfilePhotoUrl(usuario) || avatarUser}
+              alt={`Foto de perfil de ${usuario.nome}`}
+              onError={(event) => {
+                event.currentTarget.src = avatarUser;
+              }}
+            />
           </div>
         </div>
       )}

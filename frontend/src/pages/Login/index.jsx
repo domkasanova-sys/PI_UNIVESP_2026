@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import userAvatar from "../../assets/avatar.png";
 import api from "../../services/api";
-import { setUsuarioLogado } from "../../utils/session";
+import { setTokenAutenticacao, setUsuarioLogado } from "../../utils/session";
 import "./index.css";
 
 function Login() {
@@ -26,27 +26,24 @@ function Login() {
     try {
       setCarregando(true);
 
-      await api.post("/auth/login", {
+      const { data } = await api.post("/auth/login", {
         username: inputUsuario.current.value,
         senha: inputSenha.current.value,
       });
 
-      const { data: funcionarios } = await api.get("/funcionarios");
-
-      const usuarioLogado = funcionarios.find(
-        (funcionario) => funcionario.username === inputUsuario.current.value
-      );
-
-      if (usuarioLogado) {
-        setUsuarioLogado(usuarioLogado);
-      }
+      setUsuarioLogado(data.usuario);
+      setTokenAutenticacao(data.token);
 
       inputUsuario.current.value = "";
       inputSenha.current.value = "";
 
       navigate("/visao-geral");
-    } catch {
-      alert("Usuário não encontrado!");
+    } catch (error) {
+      alert(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Não foi possível fazer login."
+      );
     } finally {
       setCarregando(false);
     }

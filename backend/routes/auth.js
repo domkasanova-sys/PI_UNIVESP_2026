@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 router.post("/cadastro", async (req, res) => {
   const { nome, cargo, username, senha } = req.body;
@@ -29,6 +30,10 @@ router.post("/cadastro", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { username, senha } = req.body;
 
+  if (!process.env.JWT_SECRET || Buffer.byteLength(process.env.JWT_SECRET) < 32) {
+    return res.status(503).json({ error: "Autenticação indisponível no momento." });
+  }
+
   try {
     const result = await pool.query(
       "SELECT * FROM funcionarios WHERE username = $1",
@@ -36,7 +41,7 @@ router.post("/login", async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(401).json({ message: "Usuário não encontrado" });
+      return res.status(401).json({ message: "Usuário ou senha inválidos." });
     }
 
     const user = result.rows[0];
@@ -44,10 +49,25 @@ router.post("/login", async (req, res) => {
     const senhaValida = await bcrypt.compare(senha, user.senha);
 
     if (!senhaValida) {
-      return res.status(401).json({ message: "Senha inválida" });
+      return res.status(401).json({ message: "Usuário ou senha inválidos." });
     }
 
-    res.status(200).json({ message: "Login bem-sucedido!" });
+    const token = jwt.sign({}, process.env.JWT_SECRET, {
+      algorithm: "HS256",
+      subject: String(user.id),
+      expiresIn: "7d",
+    });
+
+    res.status(200).json({
+      token,
+      usuario: {
+        id: user.id,
+        nome: user.nome,
+        cargo: user.cargo,
+        username: user.username,
+        is_admin: user.is_admin,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

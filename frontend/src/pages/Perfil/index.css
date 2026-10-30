@@ -54,11 +54,13 @@
 }
 
 .perfilAvatar {
-  width: 58px;
-  height: 58px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   background: #ddd;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 0 4px #eff4ff;
 }
 
 .perfilAvatar img {
@@ -66,14 +68,78 @@
   height: 100%;
   border-radius: 50%;
   display: block;
+  object-fit: cover;
 }
 
 .perfilCard h2 {
   font-size: 18px;
   color: #5a5d68;
-  margin-bottom: 35px;
+  margin-bottom: 16px;
   text-align: center;
   text-transform: uppercase;
+}
+
+.perfilFotoAcoes {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.perfilFotoInput {
+  display: none;
+}
+
+.btnFoto,
+.btnRemoverFoto {
+  min-height: 36px;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btnFoto:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.btnRemoverFoto {
+  min-height: 30px;
+  border: 0;
+  color: #b91c1c;
+}
+
+.btnFoto:disabled,
+.btnRemoverFoto:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.perfilFotoAjuda,
+.perfilFotoErro,
+.perfilFotoSucesso {
+  margin: 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.perfilFotoAjuda {
+  color: #64748b;
+}
+
+.perfilFotoErro {
+  color: #b91c1c;
+}
+
+.perfilFotoSucesso {
+  color: #15803d;
 }
 
 .perfilAcoes {

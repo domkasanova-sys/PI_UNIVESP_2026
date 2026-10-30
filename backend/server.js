@@ -31,11 +31,13 @@ const PORT = process.env.PORT || 3000;
 
 async function iniciarServidor() {
   try {
-    const migracaoTarefas = fs.readFileSync(
-      path.join(__dirname, "migrations", "001_tarefas_observacao.sql"),
-      "utf8"
-    );
-    await pool.query(migracaoTarefas);
+    for (const arquivoMigracao of ["001_tarefas_observacao.sql", "002_foto_perfil.sql"]) {
+      const migracao = fs.readFileSync(
+        path.join(__dirname, "migrations", arquivoMigracao),
+        "utf8"
+      );
+      await pool.query(migracao);
+    }
 
     app.listen(PORT, () => console.log(`API rodando na porta ${PORT} 🚀`));
   } catch (error) {

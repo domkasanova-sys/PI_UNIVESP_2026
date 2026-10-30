@@ -1,14 +1,55 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header";
 import api from "../../services/api";
 import avatar from "../../assets/avatar.png";
 import { getUsuarioLogado, limparUsuarioLogado, setUsuarioLogado } from "../../utils/session";
+import { getProfilePhotoUrl } from "../../utils/profilePhoto";
 import "./index.css";
+
+const tamanhoMaximoFoto = 768 * 1024;
+const tamanhoMaximoArquivo = 10 * 1024 * 1024;
+
+async function prepararFoto(file) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Escolha uma imagem JPEG, PNG ou WebP.");
+  }
+
+  if (file.size > tamanhoMaximoArquivo) {
+    throw new Error("A imagem original deve ter no máximo 10 MB.");
+  }
+
+  const imagem = await createImageBitmap(file);
+  const escala = Math.min(1, 512 / Math.max(imagem.width, imagem.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(imagem.width * escala));
+  canvas.height = Math.max(1, Math.round(imagem.height * escala));
+  const contexto = canvas.getContext("2d");
+
+  if (!contexto) {
+    imagem.close();
+    throw new Error("Não foi possível preparar esta imagem.");
+  }
+
+  contexto.drawImage(imagem, 0, 0, canvas.width, canvas.height);
+  imagem.close();
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+  if (!blob) {
+    throw new Error("Não foi possível converter esta imagem.");
+  }
+
+  if (blob.size > tamanhoMaximoFoto) {
+    throw new Error("A imagem ficou maior que 768 KB após a conversão.");
+  }
+
+  return blob;
+}
 
 function VerPerfil() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const inputFoto = useRef(null);
   const usuarioLogado = getUsuarioLogado();
   const idUsuarioLogado = usuarioLogado?.id;
   const [usuario, setUsuario] = useState(null);
@@ -18,6 +59,10 @@ function VerPerfil() {
     cargo: "",
     senha: "",
   });
+  const [erroFoto, setErroFoto] = useState("");
+  const [mensagemFoto, setMensagemFoto] = useState("");
+  const [salvandoFoto, setSalvandoFoto] = useState(false);
+  const [removendoFoto, setRemovendoFoto] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -76,6 +121,60 @@ function VerPerfil() {
     }
   }
 
+  async function selecionarFoto(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !usuario?.id) return;
+
+    setErroFoto("");
+    setMensagemFoto("");
+    setSalvandoFoto(true);
+
+    try {
+      const fotoPreparada = await prepararFoto(file);
+      await api.put(`/funcionarios/${usuario.id}/foto`, fotoPreparada, {
+        headers: { "Content-Type": "image/jpeg" },
+      });
+
+      const usuarioAtualizado = {
+        ...usuario,
+        foto_perfil_atualizada_em: new Date().toISOString(),
+      };
+      setUsuario(usuarioAtualizado);
+      if (String(usuarioAtualizado.id) === String(idUsuarioLogado)) {
+        setUsuarioLogado(usuarioAtualizado);
+      }
+
+      setMensagemFoto("Foto de perfil atualizada.");
+    } catch (error) {
+      setErroFoto(error.response?.data?.error || error.message || "Não foi possível atualizar a foto.");
+    } finally {
+      setSalvandoFoto(false);
+    }
+  }
+
+  async function removerFoto() {
+    if (!usuario?.id) return;
+
+    setErroFoto("");
+    setMensagemFoto("");
+    setRemovendoFoto(true);
+
+    try {
+      await api.delete(`/funcionarios/${usuario.id}/foto`);
+      const usuarioAtualizado = { ...usuario, foto_perfil_atualizada_em: null };
+      setUsuario(usuarioAtualizado);
+      if (String(usuarioAtualizado.id) === String(idUsuarioLogado)) {
+        setUsuarioLogado(usuarioAtualizado);
+      }
+      setMensagemFoto("Foto de perfil removida.");
+    } catch (error) {
+      setErroFoto(error.response?.data?.error || "Não foi possível remover a foto.");
+    } finally {
+      setRemovendoFoto(false);
+    }
+  }
+
   async function excluirPerfil() {
     if (!usuario?.id) return;
 
@@ -106,6 +205,9 @@ function VerPerfil() {
       </div>
     );
   }
+
+  const podeAlterarFoto = String(usuario.id) === String(idUsuarioLogado);
+  const urlFoto = getProfilePhotoUrl(usuario) || avatar;
 
   return (
     <div className="perfilPage">
@@ -153,10 +255,51 @@ function VerPerfil() {
 
         <aside className="perfilCard">
           <div className="perfilAvatar">
-            <img src={avatar} alt="Avatar" />
+            <img
+              src={urlFoto}
+              alt={`Foto de perfil de ${formulario.nome || usuario.nome}`}
+              onError={(event) => {
+                event.currentTarget.src = avatar;
+              }}
+            />
           </div>
 
           <h2>{formulario.nome || usuario.nome}</h2>
+
+          {podeAlterarFoto && (
+            <div className="perfilFotoAcoes">
+              <input
+                ref={inputFoto}
+                className="perfilFotoInput"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={selecionarFoto}
+                disabled={salvandoFoto || removendoFoto}
+                aria-label="Escolher uma foto de perfil"
+              />
+              <button
+                className="btnFoto"
+                type="button"
+                onClick={() => inputFoto.current?.click()}
+                disabled={salvandoFoto || removendoFoto}
+              >
+                {salvandoFoto ? "ENVIANDO FOTO..." : "ESCOLHER FOTO"}
+              </button>
+              {usuario.foto_perfil_atualizada_em && (
+                <button
+                  className="btnRemoverFoto"
+                  type="button"
+                  onClick={removerFoto}
+                  disabled={salvandoFoto || removendoFoto}
+                >
+                  {removendoFoto ? "REMOVENDO..." : "REMOVER FOTO"}
+                </button>
+              )}
+              <p className="perfilFotoAjuda">JPEG, PNG ou WebP · até 10 MB</p>
+              {erroFoto && <p className="perfilFotoErro" role="alert">{erroFoto}</p>}
+              {mensagemFoto && <p className="perfilFotoSucesso" role="status">{mensagemFoto}</p>}
+            </div>
+          )}
 
           <div className="perfilAcoes">
             <button className="btnSalvar" onClick={salvarPerfil}>
