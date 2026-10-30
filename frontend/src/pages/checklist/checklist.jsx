@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import api from "../../services/api";
-import { getUsuarioLogado } from "../../utils/session";
+import { getUsuarioLogado, isAdmin } from "../../utils/session";
 import "./checklist.css";
+
+function obterResponsaveisSelecionados(itensDoDia, usuarioId) {
+  return Object.fromEntries(
+    itensDoDia.map((item) => [
+      item.item_id,
+      String(item.responsavel_id || usuarioId || ""),
+    ])
+  );
+}
 
 function Checklist() {
   const usuario = getUsuarioLogado();
+  const usuarioEhAdmin = isAdmin(usuario);
   const [itens, setItens] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [responsaveisSelecionados, setResponsaveisSelecionados] = useState({});
@@ -21,20 +31,13 @@ function Checklist() {
       setErro("");
       const { data } = await api.get("/checklist/dia");
       setItens(data);
-      setResponsaveisSelecionados((atuais) => ({
-        ...atuais,
-        ...Object.fromEntries(
-          data
-            .filter((item) => item.responsavel_id)
-            .map((item) => [item.item_id, String(item.responsavel_id)])
-        ),
-      }));
+      setResponsaveisSelecionados(obterResponsaveisSelecionados(data, usuario?.id));
     } catch (error) {
       setErro(error.response?.data?.erro || "Não foi possível carregar o checklist.");
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [usuario?.id]);
 
   useEffect(() => {
     let ativo = true;
@@ -44,11 +47,7 @@ function Checklist() {
         if (ativo) {
           setItens(itensDoDia);
           setFuncionarios(listaFuncionarios);
-          setResponsaveisSelecionados(Object.fromEntries(
-            itensDoDia
-              .filter((item) => item.responsavel_id)
-              .map((item) => [item.item_id, String(item.responsavel_id)])
-          ));
+          setResponsaveisSelecionados(obterResponsaveisSelecionados(itensDoDia, usuario?.id));
         }
       })
       .catch((error) => {
@@ -63,7 +62,7 @@ function Checklist() {
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [usuario?.id]);
 
   async function gerarChecklist() {
     try {
@@ -225,25 +224,36 @@ function Checklist() {
                   onChange={() => alterarConclusao(item.item_id, true)}
                 />
                 <span className="checklistItemText">{item.descricao}</span>
-                <select
-                  className="checklistResponsibleSelect"
-                  aria-label={`Responsável por ${item.descricao}`}
-                  value={responsaveisSelecionados[item.item_id] || ""}
-                  onChange={(event) => setResponsaveisSelecionados((atuais) => ({
-                    ...atuais,
-                    [item.item_id]: event.target.value,
-                  }))}
-                >
-                  <option value="">Selecionar responsável</option>
-                  {funcionarios.map((funcionario) => (
-                    <option key={funcionario.id} value={funcionario.id}>
-                      {funcionario.nome}
-                    </option>
-                  ))}
-                </select>
-                <span className={`checklistStatus${item.concluido ? " statusDone" : ""}`}>
-                  {item.concluido ? "Concluído" : "Pendente"}
-                </span>
+                <div className="checklistAssignment">
+                  {usuarioEhAdmin ? (
+                    <select
+                      className="checklistResponsibleSelect"
+                      aria-label={`Responsável por ${item.descricao}`}
+                      value={responsaveisSelecionados[item.item_id] || ""}
+                      disabled={Boolean(item.concluido)}
+                      onChange={(event) => setResponsaveisSelecionados((atuais) => ({
+                        ...atuais,
+                        [item.item_id]: event.target.value,
+                      }))}
+                    >
+                      <option value="">Selecionar responsável</option>
+                      {funcionarios.map((funcionario) => (
+                        <option key={funcionario.id} value={funcionario.id}>
+                          {funcionario.nome}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="checklistResponsible">
+                      {item.concluido
+                        ? `Concluído por ${item.responsavel || usuario?.nome || "você"}`
+                        : `Concluir como ${usuario?.nome || "usuário conectado"}`}
+                    </span>
+                  )}
+                  <span className={`checklistStatus${item.concluido ? " statusDone" : ""}`}>
+                    {item.concluido ? "Concluído" : "Pendente"}
+                  </span>
+                </div>
               </div>
             ))
           ) : (
