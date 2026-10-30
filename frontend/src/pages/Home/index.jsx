@@ -12,6 +12,9 @@ function VisaoGeral() {
   const [funcionarioId, setFuncionarioId] = useState(usuarioAdmin ? "" : usuarioLogado?.id || "");
   const [escala, setEscala] = useState([]);
   const [tarefas, setTarefas] = useState([]);
+  const [itensChecklistConcluidos, setItensChecklistConcluidos] = useState([]);
+  const [carregandoChecklist, setCarregandoChecklist] = useState(true);
+  const [erroChecklist, setErroChecklist] = useState("");
   const [mostrarTudo, setMostrarTudo] = useState(false);
 
   function formatarEscalas(escalas) {
@@ -69,6 +72,21 @@ function VisaoGeral() {
   useEffect(() => {
     let ativo = true;
 
+    api.get("/checklist/dia")
+      .then(({ data }) => {
+        if (ativo) {
+          setItensChecklistConcluidos(data.filter((item) => item.concluido));
+        }
+      })
+      .catch((error) => {
+        if (ativo) {
+          setErroChecklist(error.response?.data?.erro || "Não foi possível carregar os itens concluídos do checklist.");
+        }
+      })
+      .finally(() => {
+        if (ativo) setCarregandoChecklist(false);
+      });
+
     if (usuarioAdmin) {
       api.get("/funcionarios").then((resposta) => {
         if (ativo) {
@@ -125,6 +143,40 @@ function VisaoGeral() {
             ))}
           </select>
         )}
+
+        <section className="checklistResumoVisao" aria-labelledby="checklistResumoTitulo">
+          <div className="checklistResumoHeader">
+            <div>
+              <h2 id="checklistResumoTitulo" className="secaoTitulo">Checklist concluído hoje</h2>
+              <p>Itens da rotina já finalizados pela equipe.</p>
+            </div>
+            {!carregandoChecklist && !erroChecklist && (
+              <span className="checklistResumoContagem">
+                {itensChecklistConcluidos.length} concluído{itensChecklistConcluidos.length === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
+
+          {erroChecklist ? (
+            <p className="checklistResumoMensagem checklistResumoErro" role="alert">{erroChecklist}</p>
+          ) : carregandoChecklist ? (
+            <p className="checklistResumoMensagem">Carregando checklist de hoje...</p>
+          ) : itensChecklistConcluidos.length > 0 ? (
+            <ul className="checklistResumoLista">
+              {itensChecklistConcluidos.map((item) => (
+                <li className="checklistResumoItem" key={item.item_id}>
+                  <span className="checklistResumoMarcador" aria-hidden="true">✓</span>
+                  <span className="checklistResumoDescricao">{item.descricao}</span>
+                  {item.responsavel && (
+                    <span className="checklistResumoResponsavel">{item.responsavel}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="checklistResumoMensagem">Nenhum item foi concluído hoje.</p>
+          )}
+        </section>
 
         {(funcionarioId || !usuarioAdmin) && (
           <>
