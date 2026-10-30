@@ -13,6 +13,18 @@ function obterResponsaveisSelecionados(itensDoDia, usuarioId) {
   );
 }
 
+function obterDataBrasilia() {
+  const partesData = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const valores = Object.fromEntries(partesData.map(({ type, value }) => [type, value]));
+
+  return `${valores.year}-${valores.month}-${valores.day}`;
+}
+
 function Checklist() {
   const usuario = getUsuarioLogado();
   const usuarioEhAdmin = isAdmin(usuario);
@@ -65,6 +77,19 @@ function Checklist() {
       ativo = false;
     };
   }, [usuario?.id]);
+
+  useEffect(() => {
+    let dataAtual = obterDataBrasilia();
+    const intervalo = window.setInterval(() => {
+      const novaData = obterDataBrasilia();
+      if (novaData !== dataAtual) {
+        dataAtual = novaData;
+        carregarChecklist();
+      }
+    }, 30_000);
+
+    return () => window.clearInterval(intervalo);
+  }, [carregarChecklist]);
 
   async function gerarChecklist() {
     try {
@@ -184,7 +209,11 @@ function Checklist() {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
+                timeZone: "America/Sao_Paulo",
               })}
+            </p>
+            <p className="checklistAutoResetInfo">
+              A lista é renovada automaticamente à meia-noite (horário de Brasília).
             </p>
           </div>
           <div className="checklistHeaderActions">

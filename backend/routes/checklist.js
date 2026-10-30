@@ -2,8 +2,21 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
+async function gerarChecklistDoDia() {
+	return pool.query(
+		`INSERT INTO checklist_dias (item_id, data, concluido)
+		 SELECT item.id, (NOW() AT TIME ZONE 'America/Sao_Paulo')::date, FALSE
+		 FROM checklist_itens AS item
+		 WHERE item.ativo = TRUE
+		 ON CONFLICT (item_id, data) DO NOTHING
+		 RETURNING id`
+	);
+}
+
 router.get("/dia", async (req, res) => {
 	try {
+		await gerarChecklistDoDia();
+
 		const result = await pool.query(
 			`SELECT
 				 dia.item_id,
@@ -49,14 +62,7 @@ router.post("/itens", async (req, res) => {
 
 router.post("/gerar-dia", async (req, res) => {
 	try {
-		const result = await pool.query(
-			`INSERT INTO checklist_dias (item_id, data, concluido)
-			 SELECT item.id, (NOW() AT TIME ZONE 'America/Sao_Paulo')::date, FALSE
-			 FROM checklist_itens AS item
-			 WHERE item.ativo = TRUE
-			 ON CONFLICT (item_id, data) DO NOTHING
-			 RETURNING id`
-		);
+		const result = await gerarChecklistDoDia();
 
 		res.status(201).json({
 			message: "Checklist do dia gerado com sucesso.",
