@@ -32,6 +32,13 @@
   text-transform: capitalize;
 }
 
+.checklistHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .checklistButton {
   min-height: 44px;
   border: 0;
@@ -69,6 +76,15 @@
 
 .checklistButtonSecondary:hover:not(:disabled) {
   background: #f8fafc;
+}
+
+.checklistButtonDanger {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.checklistButtonDanger:hover:not(:disabled) {
+  background: #991b1b;
 }
 
 .checklistSummary,
@@ -156,6 +172,15 @@
   padding: 12px 14px;
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.checklistSuccess {
+  margin: 0 0 16px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #f0fdf4;
+  color: #166534;
 }
 
 .checklistItems {
@@ -281,6 +306,15 @@
   .checklistHeader {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .checklistHeaderActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .checklistHeaderActions .checklistButton {
+    flex: 1;
   }
 
   .checklistFormRow {

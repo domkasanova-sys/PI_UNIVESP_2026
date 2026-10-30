@@ -67,6 +67,41 @@ router.post("/gerar-dia", async (req, res) => {
 	}
 });
 
+router.post("/reiniciar-dia", async (req, res) => {
+	const funcionarioId = Number(req.body.funcionario_id);
+
+	if (!Number.isInteger(funcionarioId) || funcionarioId <= 0) {
+		return res.status(400).json({ erro: "Identificador do administrador inválido." });
+	}
+
+	try {
+		const administrador = await pool.query(
+			"SELECT id FROM funcionarios WHERE id = $1 AND is_admin = TRUE",
+			[funcionarioId]
+		);
+
+		if (administrador.rowCount === 0) {
+			return res.status(403).json({ erro: "Somente um administrador pode reiniciar o checklist." });
+		}
+
+		const result = await pool.query(
+			`UPDATE checklist_dias
+			 SET concluido = FALSE,
+				 responsavel_id = NULL,
+				 concluido_em = NULL
+			 WHERE data = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+			   AND concluido = TRUE`
+		);
+
+		res.status(200).json({
+			message: "Checklist de hoje reiniciado com sucesso.",
+			quantidade_reiniciada: result.rowCount,
+		});
+	} catch (error) {
+		res.status(500).json({ erro: error.message });
+	}
+});
+
 router.put("/concluir", async (req, res) => {
 	const { item_id, funcionario_id } = req.body;
 	const concluido = req.body.concluido === undefined

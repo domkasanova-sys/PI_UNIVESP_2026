@@ -22,9 +22,11 @@ function Checklist() {
   const [novoItem, setNovoItem] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [gerando, setGerando] = useState(false);
+  const [reiniciando, setReiniciando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [atualizandoItemId, setAtualizandoItemId] = useState(null);
   const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
 
   const carregarChecklist = useCallback(async () => {
     try {
@@ -68,12 +70,34 @@ function Checklist() {
     try {
       setGerando(true);
       setErro("");
+      setMensagem("");
       await api.post("/checklist/gerar-dia");
       await carregarChecklist();
     } catch (error) {
       setErro(error.response?.data?.erro || "Não foi possível gerar o checklist de hoje.");
     } finally {
       setGerando(false);
+    }
+  }
+
+  async function reiniciarChecklist() {
+    if (!window.confirm("Deseja reiniciar o checklist de hoje? Todos os itens concluídos voltarão para pendente.")) {
+      return;
+    }
+
+    try {
+      setReiniciando(true);
+      setErro("");
+      setMensagem("");
+      const { data } = await api.post("/checklist/reiniciar-dia", {
+        funcionario_id: usuario.id,
+      });
+      await carregarChecklist();
+      setMensagem(`${data.quantidade_reiniciada} item(ns) voltaram para pendente.`);
+    } catch (error) {
+      setErro(error.response?.data?.erro || "Não foi possível reiniciar o checklist de hoje.");
+    } finally {
+      setReiniciando(false);
     }
   }
 
@@ -163,14 +187,26 @@ function Checklist() {
               })}
             </p>
           </div>
-          <button
-            className="checklistButton checklistButtonSecondary"
-            type="button"
-            onClick={gerarChecklist}
-            disabled={gerando}
-          >
-            {gerando ? "Gerando..." : "↻ Gerar checklist de hoje"}
-          </button>
+          <div className="checklistHeaderActions">
+            {usuarioEhAdmin && (
+              <button
+                className="checklistButton checklistButtonDanger"
+                type="button"
+                onClick={reiniciarChecklist}
+                disabled={reiniciando || gerando}
+              >
+                {reiniciando ? "Reiniciando..." : "Reiniciar checklist"}
+              </button>
+            )}
+            <button
+              className="checklistButton checklistButtonSecondary"
+              type="button"
+              onClick={gerarChecklist}
+              disabled={gerando || reiniciando}
+            >
+              {gerando ? "Gerando..." : "↻ Gerar checklist de hoje"}
+            </button>
+          </div>
         </header>
 
         <div className="checklistSummary" aria-live="polite">
@@ -206,6 +242,7 @@ function Checklist() {
         </form>
 
         {erro && <p className="checklistError" role="alert">{erro}</p>}
+        {mensagem && <p className="checklistSuccess" role="status">{mensagem}</p>}
 
         <section className="checklistItems" aria-label="Itens do checklist de hoje">
           {carregando ? (
