@@ -8,6 +8,7 @@ import Tarefas from './pages/Tarefas';
 import Perfil from './pages/Perfil';
 import Checklist from './pages/checklist/checklist';
 import MinhaEscala from './pages/MinhaEscala';
+import MinhasTarefas from './pages/MinhasTarefas';
 import { getUsuarioLogado, isAdmin } from './utils/session';
 
 function RotaAdmin({ children }) {
@@ -44,6 +45,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/visao-geral" element={<RotaPrivada><VisaoGeral /></RotaPrivada>} />
         <Route path="/minha-escala" element={<RotaPrivada><MinhaEscala /></RotaPrivada>} />
+        <Route path="/minhas-tarefas" element={<RotaPrivada><MinhasTarefas /></RotaPrivada>} />
         <Route path="/funcionarios" element={<RotaAdmin><Funcionarios /></RotaAdmin>} />
         <Route path="/escalas" element={<RotaAdmin><Escalas /></RotaAdmin>} />
         <Route path="/tarefas" element={<RotaAdmin><Tarefas /></RotaAdmin>} />

@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config(); 
 
 const pool = require("./db");
@@ -27,4 +29,19 @@ app.get('/test-db', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => console.log(`API rodando na porta ${PORT} 🚀`));
+async function iniciarServidor() {
+  try {
+    const migracaoTarefas = fs.readFileSync(
+      path.join(__dirname, "migrations", "001_tarefas_observacao.sql"),
+      "utf8"
+    );
+    await pool.query(migracaoTarefas);
+
+    app.listen(PORT, () => console.log(`API rodando na porta ${PORT} 🚀`));
+  } catch (error) {
+    console.error("Não foi possível preparar o banco para iniciar a API:", error);
+    process.exitCode = 1;
+  }
+}
+
+iniciarServidor();
