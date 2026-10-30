@@ -1,43 +1,170 @@
 .visaoContainer {
-  max-width: 720px;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  color: #172033;
+}
+
+.visaoHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+
+.visaoData {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: capitalize;
+}
+
+.visaoHeader h1 {
+  margin: 0;
+  color: #172033;
+  font-size: clamp(1.8rem, 3vw, 2.25rem);
+  line-height: 1.15;
+}
+
+.visaoSubtitulo {
+  margin: 9px 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.visaoFiltro {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.visaoFiltro label {
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .selectFuncionario {
-  width: 620px;
-  max-width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #bfc1c7;
-  border-radius: 5px;
-  background: white;
-  margin-bottom: 28px;
+  width: min(100%, 520px);
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 0 12px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
 }
 
-.checklistResumoVisao {
-  margin-bottom: 28px;
-  overflow: hidden;
+.selectFuncionario:focus {
+  border-color: #2563eb;
+  outline: 3px solid rgb(37 99 235 / 13%);
+}
+
+.visaoIndicadores {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.visaoIndicador {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  min-height: 112px;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 13px;
+  padding: 19px;
   background: #fff;
   box-shadow: 0 4px 18px rgb(15 23 42 / 4%);
 }
 
-.checklistResumoHeader {
+.visaoIndicadorIcone {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.indicadorAzul {
+  background: #eaf1ff;
+  color: #2563eb;
+}
+
+.indicadorLaranja {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.indicadorVerde {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.visaoIndicador > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.visaoIndicador p {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.visaoIndicador strong {
+  overflow: hidden;
+  color: #172033;
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visaoIndicador > div > span {
+  color: #94a3b8;
+  font-size: 0.76rem;
+}
+
+.visaoCard {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgb(15 23 42 / 4%);
+}
+
+.checklistResumoVisao {
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.visaoCardHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 20px;
+  padding: 19px 21px;
   border-bottom: 1px solid #edf1f5;
 }
 
-.checklistResumoHeader .secaoTitulo {
+.visaoCardHeader h2 {
   margin: 0;
+  color: #172033;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
-.checklistResumoHeader p {
+.visaoCardHeader p {
   margin: 6px 0 0;
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
 }
 
 .checklistResumoContagem {
@@ -46,25 +173,47 @@
   padding: 7px 11px;
   background: #dcfce7;
   color: #166534;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
-.checklistResumoLista {
+.checklistResumoProgresso {
+  height: 7px;
+  margin: 0 21px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e2e8f0;
+}
+
+.checklistResumoProgresso span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #22c55e;
+  transition: width 200ms ease;
+}
+
+.checklistResumoLista,
+.visaoLista {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.checklistResumoLista {
+  padding: 6px 21px 0;
 }
 
 .checklistResumoItem {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 54px;
-  padding: 10px 20px;
+  min-height: 51px;
+  padding: 9px 0;
 }
 
-.checklistResumoItem + .checklistResumoItem {
+.checklistResumoItem + .checklistResumoItem,
+.visaoLista > li + li {
   border-top: 1px solid #f1f5f9;
 }
 
@@ -77,148 +226,262 @@
   border-radius: 50%;
   background: #dcfce7;
   color: #15803d;
+  font-size: 0.82rem;
   font-weight: 800;
 }
 
 .checklistResumoDescricao {
   flex: 1;
   color: #1e293b;
+  font-size: 0.9rem;
   line-height: 1.4;
 }
 
 .checklistResumoResponsavel {
   color: #64748b;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
 }
 
-.checklistResumoMensagem {
+.visaoCardLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 21px 17px;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.visaoCardLink:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.visaoEstadoComLink {
+  padding: 2px 0 0;
+}
+
+.visaoEstado {
   margin: 0;
-  padding: 20px;
+  padding: 20px 21px;
   color: #64748b;
+  font-size: 0.88rem;
 }
 
-.checklistResumoErro {
+.visaoEstadoErro,
+.visaoErro {
   color: #b91c1c;
 }
 
-.secaoTitulo {
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 20px;
+.visaoErro {
+  margin: 0 0 16px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  padding: 11px 13px;
+  background: #fef2f2;
+  font-size: 0.86rem;
 }
 
-.escalaLista {
-  display: flex;
-  flex-direction: column;
+.visaoDetalhesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 18px;
 }
 
-.linhaEscala {
+.visaoCardIconLink {
   display: grid;
-  grid-template-columns: 1fr 200px 200px 80px;
-  gap: 25px;
-  align-items: end;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 1.1rem;
+  text-decoration: none;
 }
 
-.linhaEscala label {
-  grid-column: 1 / -1;
-  font-size: 13px;
-  font-weight: 700;
+.visaoCardIconLink:hover {
+  background: #eaf1ff;
+  color: #2563eb;
 }
 
-.campoHorario {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.campoHorario span {
-  color: #555;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.linhaEscala input,
-.campoHorario input {
-  padding: 8px 10px;
-  border: 1px solid #bfc1c7;
-  border-radius: 5px;
-  background: white;
-}
-
-.folgaBox {
+.visaoEscalaItem,
+.visaoTarefaItem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 20px;
 }
 
-.folgaBox input {
-  width: 16px;
-  height: 16px;
-}
-
-.verMaisBtn {
-  margin-left: 560px;
-  margin-top: 18px;
-  background: transparent;
-  border: none;
-  color: #006ee6;
+.visaoEscalaItem > span {
+  color: #334155;
+  font-size: 0.86rem;
   font-weight: 600;
-  cursor: pointer;
 }
 
-.tarefasTitulo {
-  margin-top: 30px;
+.visaoEscalaItem > strong {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: right;
 }
 
-.tabelaVisao {
-  width: 620px;
-  background: white;
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.12);
+.visaoEscalaItem > strong.visaoFolga {
+  color: #15803d;
 }
 
-.tabelaVisaoHeader,
-.tabelaVisaoLinha {
+.visaoTarefaItem {
+  justify-content: flex-start;
+}
+
+.visaoTarefaMarcador {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.visaoTarefaMarcador.tarefaFeita {
+  background: #22c55e;
+}
+
+.visaoTarefaTexto {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  padding: 14px 22px;
-  font-size: 13px;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
 }
 
-.tabelaVisaoHeader {
-  background: #dcdce0;
+.visaoTarefaTexto strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visaoTarefaTexto small {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.visaoTarefaStatus {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
-.tabelaVisaoLinha {
-  border-top: 1px solid #eee;
+.visaoTarefaStatus.statusFeito {
+  background: #dcfce7;
+  color: #15803d;
 }
 
-@media (max-width: 680px) {
-  .checklistResumoHeader {
-    align-items: flex-start;
+.visaoSelecaoVazia {
+  display: grid;
+  justify-items: center;
+  margin-top: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 34px 20px;
+  background: rgb(255 255 255 / 65%);
+  text-align: center;
+}
+
+.visaoSelecaoVazia > span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: #eaf1ff;
+  color: #2563eb;
+  font-size: 1.3rem;
+}
+
+.visaoSelecaoVazia h2 {
+  margin: 13px 0 6px;
+  color: #1e293b;
+  font-size: 1.05rem;
+}
+
+.visaoSelecaoVazia p {
+  max-width: 390px;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 800px) {
+  .visaoDetalhesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .visaoHeader {
+    margin-bottom: 21px;
+  }
+
+  .visaoIndicadores {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .visaoIndicador {
+    min-height: 86px;
+    padding: 14px 16px;
+  }
+
+  .visaoIndicadorIcone {
+    width: 36px;
+    height: 36px;
+  }
+
+  .visaoCardHeader {
+    padding: 16px;
+  }
+
+  .checklistResumoProgresso {
+    margin: 0 16px;
+  }
+
+  .checklistResumoLista {
+    padding: 4px 16px 0;
   }
 
   .checklistResumoItem {
     align-items: flex-start;
     flex-wrap: wrap;
-    padding: 12px 16px;
+    gap: 8px 10px;
   }
 
   .checklistResumoResponsavel {
-    width: calc(100% - 36px);
-    margin-left: 36px;
+    width: calc(100% - 34px);
+    margin-left: 34px;
   }
 
-  .linhaEscala {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+  .visaoCardLink {
+    margin-left: 16px;
   }
 
-  .tabelaVisao {
-    width: 100%;
+  .visaoEscalaItem,
+  .visaoTarefaItem {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .visaoTarefaStatus {
+    white-space: nowrap;
   }
 }
