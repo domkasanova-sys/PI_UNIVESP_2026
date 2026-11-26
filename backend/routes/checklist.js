@@ -244,6 +244,85 @@ router.post("/reiniciar-dia", async (req, res) => {
 	}
 });
 
+router.get("/relatorio/dados", autenticarAdmin, async (req, res) => {
+	try {
+		const hoje = new Intl.DateTimeFormat("en-CA", {
+			timeZone: "America/Sao_Paulo",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(new Date());
+		const inicio = typeof req.query.inicio === "string" ? req.query.inicio : hoje;
+		const fim = typeof req.query.fim === "string" ? req.query.fim : inicio;
+		const dataValida = (data) => {
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return false;
+			const parseada = new Date(`${data}T00:00:00Z`);
+			return !Number.isNaN(parseada.getTime()) && parseada.toISOString().slice(0, 10) === data;
+		};
+
+		if (!dataValida(inicio) || !dataValida(fim) || inicio > fim) {
+			return res.status(400).json({ erro: "Informe um período válido, com a data inicial anterior ou igual à final." });
+		}
+
+		if (inicio <= hoje && fim >= hoje) {
+			await gerarChecklistDoDia();
+		}
+
+		const [itens, funcionarios] = await Promise.all([
+			pool.query(
+				`SELECT
+					 item.id AS item_id,
+					 item.descricao,
+					 COUNT(dia.id)::int AS ocorrencias,
+					 COUNT(dia.id) FILTER (WHERE dia.concluido)::int AS concluidos
+				 FROM checklist_itens AS item
+				 LEFT JOIN checklist_dias AS dia
+				   ON dia.item_id = item.id
+				  AND dia.data BETWEEN $1::date AND $2::date
+				 WHERE item.ativo = TRUE OR dia.id IS NOT NULL
+				 GROUP BY item.id, item.descricao
+				 ORDER BY item.descricao`,
+				[inicio, fim]
+			),
+			pool.query(
+				`SELECT
+					 dia.item_id,
+					 funcionario.nome,
+					 COUNT(*)::int AS quantidade
+				 FROM checklist_dias AS dia
+				 JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
+				 WHERE dia.data BETWEEN $1::date AND $2::date
+				   AND dia.concluido = TRUE
+				 GROUP BY dia.item_id, funcionario.id, funcionario.nome
+				 ORDER BY dia.item_id, funcionario.nome`,
+				[inicio, fim]
+			),
+		]);
+
+		const porItem = new Map();
+		for (const funcionario of funcionarios.rows) {
+			const lista = porItem.get(funcionario.item_id) || [];
+			lista.push({ nome: funcionario.nome, quantidade: funcionario.quantidade });
+			porItem.set(funcionario.item_id, lista);
+		}
+
+		const itensRelatorio = itens.rows.map((item) => ({
+			...item,
+			funcionarios: porItem.get(item.item_id) || [],
+		}));
+
+		res.status(200).json({
+			inicio,
+			fim,
+			total_ocorrencias: itensRelatorio.reduce((total, item) => total + item.ocorrencias, 0),
+			total_concluidos: itensRelatorio.reduce((total, item) => total + item.concluidos, 0),
+			itens: itensRelatorio,
+		});
+	} catch (error) {
+		res.status(500).json({ erro: error.message });
+	}
+});
+
 router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
 	try {
 		const hoje = new Intl.DateTimeFormat("en-CA", {

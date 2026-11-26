@@ -105,11 +105,109 @@
 
 .checklistSummary,
 .checklistAddForm,
+.checklistReport,
 .checklistItems {
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 4px 18px rgb(15 23 42 / 4%);
+}
+
+.checklistReport {
+  margin-bottom: 18px;
+  padding: 22px;
+}
+
+.checklistReportHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.checklistReportHeader h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.25rem;
+}
+
+.checklistReportHeader p:not(.checklistEyebrow) {
+  margin: 7px 0 0;
+  color: #64748b;
+}
+
+.checklistReportTotals {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 4px 8px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.checklistReportTotals strong {
+  color: #166534;
+  font-size: 1.1rem;
+  text-align: right;
+}
+
+.checklistReportList {
+  display: grid;
+  gap: 10px;
+}
+
+.checklistReportItem {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #f8fafc;
+}
+
+.checklistReportItemHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.checklistReportItemHeading h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.checklistReportItemHeading > span {
+  color: #64748b;
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.checklistReportItem ul {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklistReportItem li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 7px;
+  color: #475569;
+}
+
+.checklistReportItem li strong {
+  color: #166534;
+  white-space: nowrap;
+}
+
+.checklistReportNoCompletions {
+  margin: 12px 0 0;
+  color: #64748b;
 }
 
 .checklistSummary {
@@ -361,6 +459,16 @@
   .checklistHeader {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .checklistReportHeader,
+  .checklistReportItemHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .checklistReportItemHeading > span {
+    text-align: left;
   }
 
   .checklistHeaderActions {

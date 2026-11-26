@@ -25,6 +25,11 @@ function obterDataBrasilia() {
   return `${valores.year}-${valores.month}-${valores.day}`;
 }
 
+function formatarDataRelatorio(data) {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" })
+    .format(new Date(`${data}T12:00:00Z`));
+}
+
 function Checklist() {
   const usuario = getUsuarioLogado();
   const usuarioEhAdmin = isAdmin(usuario);
@@ -36,6 +41,8 @@ function Checklist() {
   const [gerando, setGerando] = useState(false);
   const [reiniciando, setReiniciando] = useState(false);
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
+  const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
+  const [relatorio, setRelatorio] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [atualizandoItemId, setAtualizandoItemId] = useState(null);
   const [erro, setErro] = useState("");
@@ -157,6 +164,22 @@ function Checklist() {
     }
   }
 
+  async function visualizarRelatorio() {
+    try {
+      setCarregandoRelatorio(true);
+      setErro("");
+      setMensagem("");
+      const { data } = await api.get("/checklist/relatorio/dados", {
+        params: periodoRelatorio,
+      });
+      setRelatorio(data);
+    } catch (error) {
+      setErro(error.response?.data?.erro || "Não foi possível carregar o relatório do checklist.");
+    } finally {
+      setCarregandoRelatorio(false);
+    }
+  }
+
   async function adicionarItem(event) {
     event.preventDefault();
     const descricao = novoItem.trim();
@@ -174,57 +197,57 @@ function Checklist() {
     } finally {
       setSalvando(false);
     }
+  }
 
-    function iniciarEdicao(item) {
-      setEditandoItemId(item.item_id);
-      setDescricaoEdicao(item.descricao);
+  function iniciarEdicao(item) {
+    setEditandoItemId(item.item_id);
+    setDescricaoEdicao(item.descricao);
+    setErro("");
+    setMensagem("");
+  }
+
+  function cancelarEdicao() {
+    setEditandoItemId(null);
+    setDescricaoEdicao("");
+  }
+
+  async function salvarEdicao(itemId) {
+    const descricao = descricaoEdicao.trim();
+    if (!descricao) {
+      setErro("A descrição do item é obrigatória.");
+      return;
+    }
+
+    try {
+      setAtualizandoItemId(itemId);
       setErro("");
-      setMensagem("");
+      await api.put(`/checklist/itens/${itemId}`, { descricao });
+      setItens((atuais) => atuais.map((item) =>
+        item.item_id === itemId ? { ...item, descricao } : item
+      ));
+      cancelarEdicao();
+      setMensagem("Item do checklist atualizado.");
+    } catch (error) {
+      setErro(error.response?.data?.erro || "Não foi possível editar o item.");
+    } finally {
+      setAtualizandoItemId(null);
     }
+  }
 
-    function cancelarEdicao() {
-      setEditandoItemId(null);
-      setDescricaoEdicao("");
-    }
+  async function excluirItem(itemId) {
+    if (!window.confirm("Deseja remover este item da lista de checklist?")) return;
 
-    async function salvarEdicao(itemId) {
-      const descricao = descricaoEdicao.trim();
-      if (!descricao) {
-        setErro("A descrição do item é obrigatória.");
-        return;
-      }
-
-      try {
-        setAtualizandoItemId(itemId);
-        setErro("");
-        await api.put(`/checklist/itens/${itemId}`, { descricao });
-        setItens((atuais) => atuais.map((item) =>
-          item.item_id === itemId ? { ...item, descricao } : item
-        ));
-        cancelarEdicao();
-        setMensagem("Item do checklist atualizado.");
-      } catch (error) {
-        setErro(error.response?.data?.erro || "Não foi possível editar o item.");
-      } finally {
-        setAtualizandoItemId(null);
-      }
-    }
-
-    async function excluirItem(itemId) {
-      if (!window.confirm("Deseja remover este item da lista de checklist?")) return;
-
-      try {
-        setAtualizandoItemId(itemId);
-        setErro("");
-        await api.delete(`/checklist/itens/${itemId}`);
-        setItens((atuais) => atuais.filter((item) => item.item_id !== itemId));
-        cancelarEdicao();
-        setMensagem("Item removido da lista de checklist.");
-      } catch (error) {
-        setErro(error.response?.data?.erro || "Não foi possível remover o item.");
-      } finally {
-        setAtualizandoItemId(null);
-      }
+    try {
+      setAtualizandoItemId(itemId);
+      setErro("");
+      await api.delete(`/checklist/itens/${itemId}`);
+      setItens((atuais) => atuais.filter((item) => item.item_id !== itemId));
+      cancelarEdicao();
+      setMensagem("Item removido da lista de checklist.");
+    } catch (error) {
+      setErro(error.response?.data?.erro || "Não foi possível remover o item.");
+    } finally {
+      setAtualizandoItemId(null);
     }
   }
 
@@ -311,6 +334,20 @@ function Checklist() {
                   {reiniciando ? "Reiniciando..." : "Reiniciar checklist"}
                 </button>
                 <button
+                  className="checklistButton checklistButtonSecondary"
+                  type="button"
+                  onClick={visualizarRelatorio}
+                  disabled={
+                    carregandoRelatorio ||
+                    baixandoRelatorio ||
+                    !periodoRelatorio.inicio ||
+                    !periodoRelatorio.fim ||
+                    periodoRelatorio.inicio > periodoRelatorio.fim
+                  }
+                >
+                  {carregandoRelatorio ? "Carregando..." : "Visualizar relatório"}
+                </button>
+                <button
                   className="checklistButton checklistButtonPrimary"
                   type="button"
                   onClick={baixarRelatorio}
@@ -365,6 +402,58 @@ function Checklist() {
             <span style={{ width: `${itens.length ? (concluidos / itens.length) * 100 : 0}%` }} />
           </div>
         </div>
+
+        {relatorio && (
+          <section className="checklistReport" aria-labelledby="checklistReportTitle">
+            <header className="checklistReportHeader">
+              <div>
+                <p className="checklistEyebrow">RELATÓRIO DO PERÍODO</p>
+                <h2 id="checklistReportTitle">Execuções por item e funcionário</h2>
+                <p>
+                  {relatorio.inicio === relatorio.fim
+                    ? formatarDataRelatorio(relatorio.inicio)
+                    : `${formatarDataRelatorio(relatorio.inicio)} a ${formatarDataRelatorio(relatorio.fim)}`}
+                </p>
+              </div>
+              <div className="checklistReportTotals">
+                <strong>{relatorio.total_concluidos}</strong>
+                <span>conclusões</span>
+                <strong>{relatorio.total_ocorrencias}</strong>
+                <span>ocorrências</span>
+              </div>
+            </header>
+            {relatorio.itens.length ? (
+              <div className="checklistReportList">
+                {relatorio.itens.map((item) => (
+                  <article className="checklistReportItem" key={item.item_id}>
+                    <div className="checklistReportItemHeading">
+                      <h3>{item.descricao}</h3>
+                      <span>{item.concluidos} concluídos de {item.ocorrencias} ocorrências</span>
+                    </div>
+                    {item.funcionarios.length ? (
+                      <ul>
+                        {item.funcionarios.map((funcionario) => (
+                          <li key={`${item.item_id}-${funcionario.nome}`}>
+                            <span>{funcionario.nome}</span>
+                            <strong>{funcionario.quantidade} vez(es)</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="checklistReportNoCompletions">
+                        Nenhuma conclusão registrada no período.
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="checklistReportNoCompletions">
+                Nenhum item encontrado no período selecionado.
+              </p>
+            )}
+          </section>
+        )}
 
         {usuarioEhAdmin && (
           <form className="checklistAddForm" onSubmit={adicionarItem}>
