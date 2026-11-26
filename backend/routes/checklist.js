@@ -246,7 +246,34 @@ router.post("/reiniciar-dia", async (req, res) => {
 
 router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
 	try {
-		await gerarChecklistDoDia();
+		const dataRelatorio = typeof req.query.data === "string"
+			? req.query.data
+			: "";
+		const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(dataRelatorio);
+
+		if (dataRelatorio && !dataValida) {
+			return res.status(400).json({ erro: "Data inválida." });
+		}
+
+		const dataSelecionada = dataValida
+			? dataRelatorio
+			: new Intl.DateTimeFormat("en-CA", {
+					timeZone: "America/Sao_Paulo",
+					year: "numeric",
+					month: "2-digit",
+					day: "2-digit",
+				}).format(new Date());
+
+		const dataHoje = new Intl.DateTimeFormat("en-CA", {
+			timeZone: "America/Sao_Paulo",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(new Date());
+
+		if (dataSelecionada === dataHoje) {
+			await gerarChecklistDoDia();
+		}
 
 		const result = await pool.query(
 			`SELECT
@@ -257,10 +284,15 @@ router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
 			 FROM checklist_dias AS dia
 			 JOIN checklist_itens AS item ON item.id = dia.item_id
 			 LEFT JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
-			 WHERE dia.data = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+			 WHERE dia.data = $1::date
 			 ORDER BY dia.id`
+			,
+			[dataSelecionada]
 		);
 
+		const dataFormatada = new Intl.DateTimeFormat("pt-BR", {
+			timeZone: "UTC",
+		}).format(new Date(`${dataSelecionada}T12:00:00Z`));
 		const agora = new Intl.DateTimeFormat("pt-BR", {
 			timeZone: "America/Sao_Paulo",
 			dateStyle: "short",
@@ -268,6 +300,7 @@ router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
 		const concluidos = result.rows.filter((item) => item.concluido).length;
 		const linhas = [
 			"RELATORIO DO CHECKLIST DIARIO",
+			`Data selecionada: ${dataFormatada}`,
 			`Gerado em: ${agora}`,
 			"",
 			`Resumo: ${concluidos} concluidos de ${result.rows.length} itens`,
@@ -275,7 +308,7 @@ router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
 		];
 
 		if (result.rows.length === 0) {
-			linhas.push("Nenhum item gerado para hoje.");
+			linhas.push("Nenhum item gerado nesta data.");
 		} else {
 			result.rows.forEach((item, indice) => {
 				let conclusao = "";

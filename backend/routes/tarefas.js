@@ -93,30 +93,57 @@ function criarPdf(linhas) {
 
 router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
   try {
+    const dataRelatorio = typeof req.query.data === "string"
+      ? req.query.data
+      : "";
+    const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(dataRelatorio);
+
+    if (dataRelatorio && !dataValida) {
+      return res.status(400).json({ error: "Data inválida." });
+    }
+
+    const dataSelecionada = dataValida
+      ? dataRelatorio
+      : new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Sao_Paulo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date());
+
     const [tarefas, checklist] = await Promise.all([
       pool.query(
         `SELECT tarefas.titulo, tarefas.descricao, tarefas.prazo, tarefas.finalizado,
                 tarefas.observacao, funcionarios.nome AS funcionario_nome
          FROM tarefas
          LEFT JOIN funcionarios ON tarefas.funcionario_id = funcionarios.id
+         WHERE tarefas.prazo::date = $1::date
          ORDER BY tarefas.finalizado ASC, tarefas.prazo ASC NULLS LAST, tarefas.id DESC`
+        ,
+        [dataSelecionada]
       ),
       pool.query(
         `SELECT item.descricao, dia.concluido, funcionario.nome AS responsavel
          FROM checklist_dias AS dia
          JOIN checklist_itens AS item ON item.id = dia.item_id
          LEFT JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
-         WHERE dia.data = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+         WHERE dia.data = $1::date
          ORDER BY dia.id`
+        ,
+        [dataSelecionada]
       ),
     ]);
 
+    const dataFormatada = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "UTC",
+    }).format(new Date(`${dataSelecionada}T12:00:00Z`));
     const agora = new Intl.DateTimeFormat("pt-BR", {
       timeZone: "America/Sao_Paulo",
       dateStyle: "short",
     }).format(new Date());
     const linhas = [
       "RELATORIO DE TAREFAS E CHECKLIST",
+      `Data selecionada: ${dataFormatada}`,
       `Gerado em: ${agora}`,
       "",
       `Resumo: ${tarefas.rows.filter((item) => item.finalizado).length} tarefas concluidas de ${tarefas.rows.length}`,
@@ -126,7 +153,7 @@ router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
     ];
 
     if (tarefas.rows.length === 0) {
-      linhas.push("Nenhuma tarefa cadastrada.");
+      linhas.push("Nenhuma tarefa com prazo nesta data.");
     } else {
       tarefas.rows.forEach((item, indice) => {
         const prazo = item.prazo

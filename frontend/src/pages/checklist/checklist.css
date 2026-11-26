@@ -45,6 +45,16 @@
   gap: 10px;
 }
 
+.checklistDateInput {
+  min-height: 44px;
+  border: 1px solid #dbe2ea;
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+}
+
 .checklistButton {
   min-height: 44px;
   border: 0;

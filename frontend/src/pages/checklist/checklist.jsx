@@ -40,6 +40,9 @@ function Checklist() {
   const [atualizandoItemId, setAtualizandoItemId] = useState(null);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
+  const [dataRelatorio, setDataRelatorio] = useState(() =>
+    obterDataBrasilia()
+  );
   const [editandoItemId, setEditandoItemId] = useState(null);
   const [descricaoEdicao, setDescricaoEdicao] = useState("");
 
@@ -135,12 +138,13 @@ function Checklist() {
       setErro("");
       setMensagem("");
       const resposta = await api.get("/checklist/relatorio/pdf", {
+        params: { data: dataRelatorio },
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([resposta.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `relatorio-checklist-${obterDataBrasilia()}.pdf`;
+      link.download = `relatorio-checklist-${dataRelatorio}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -309,10 +313,17 @@ function Checklist() {
                   className="checklistButton checklistButtonPrimary"
                   type="button"
                   onClick={baixarRelatorio}
-                  disabled={baixandoRelatorio || reiniciando || gerando}
+                  disabled={baixandoRelatorio || reiniciando || gerando || !dataRelatorio}
                 >
                   {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
                 </button>
+                <input
+                  className="checklistDateInput"
+                  type="date"
+                  aria-label="Data do relatório"
+                  value={dataRelatorio}
+                  onChange={(event) => setDataRelatorio(event.target.value)}
+                />
               </>
             )}
             <button

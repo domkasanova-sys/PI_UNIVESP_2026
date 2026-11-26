@@ -9,6 +9,14 @@ function Tarefas() {
   const [idEdicao, setIdEdicao] = useState(null);
   const [busca, setBusca] = useState("");
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
+  const [dataRelatorio, setDataRelatorio] = useState(() =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date())
+  );
 
   const [funcionarios, setFuncionarios] = useState([]);
 
@@ -147,12 +155,13 @@ function Tarefas() {
     try {
       setBaixandoRelatorio(true);
       const resposta = await api.get("/tarefas/relatorio/pdf", {
+        params: { data: dataRelatorio },
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([resposta.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `relatorio-tarefas-checklist-${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.download = `relatorio-tarefas-checklist-${dataRelatorio}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -183,14 +192,23 @@ function Tarefas() {
                   onChange={(e) => setBusca(e.target.value)} />
               </div>
             </div>
-            <button
-              type="button"
-              className="btnRelatorio"
-              onClick={baixarRelatorio}
-              disabled={baixandoRelatorio}
-            >
-              {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
-            </button>
+            <div className="relatorioTarefasControles">
+              <label htmlFor="data-relatorio-tarefas">Data do relatório</label>
+              <input
+                id="data-relatorio-tarefas"
+                type="date"
+                value={dataRelatorio}
+                onChange={(event) => setDataRelatorio(event.target.value)}
+              />
+              <button
+                type="button"
+                className="btnRelatorio"
+                onClick={baixarRelatorio}
+                disabled={baixandoRelatorio || !dataRelatorio}
+              >
+                {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
+              </button>
+            </div>
           </div>
         </div>
 
