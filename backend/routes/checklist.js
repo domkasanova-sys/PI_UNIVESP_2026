@@ -97,6 +97,7 @@ router.get("/dia", async (req, res) => {
 			 JOIN checklist_itens AS item ON item.id = dia.item_id
 			 LEFT JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
 			 WHERE dia.data = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+			   AND item.ativo = TRUE
 			 ORDER BY dia.id`
 		);
 
@@ -106,7 +107,7 @@ router.get("/dia", async (req, res) => {
 	}
 });
 
-router.post("/itens", async (req, res) => {
+router.post("/itens", autenticarAdmin, async (req, res) => {
 	const descricao = typeof req.body.descricao === "string"
 		? req.body.descricao.trim()
 		: "";
@@ -124,6 +125,72 @@ router.post("/itens", async (req, res) => {
 		);
 
 		res.status(201).json(result.rows[0]);
+	} catch (error) {
+		res.status(500).json({ erro: error.message });
+	}
+});
+
+router.put("/itens/:id", autenticarAdmin, async (req, res) => {
+	const itemId = Number(req.params.id);
+	const descricao = typeof req.body.descricao === "string"
+		? req.body.descricao.trim()
+		: "";
+
+	if (!Number.isInteger(itemId) || itemId <= 0) {
+		return res.status(400).json({ erro: "Identificador do item inválido." });
+	}
+	if (!descricao) {
+		return res.status(400).json({ erro: "A descrição do item é obrigatória." });
+	}
+
+	try {
+		const result = await pool.query(
+			`UPDATE checklist_itens
+			 SET descricao = $1
+			 WHERE id = $2 AND ativo = TRUE
+			 RETURNING id AS item_id, descricao, ativo`,
+			[descricao, itemId]
+		);
+
+		if (result.rowCount === 0) {
+			return res.status(404).json({ erro: "Item não encontrado." });
+		}
+
+		res.status(200).json(result.rows[0]);
+	} catch (error) {
+		res.status(500).json({ erro: error.message });
+	}
+});
+
+router.delete("/itens/:id", autenticarAdmin, async (req, res) => {
+	const itemId = Number(req.params.id);
+
+	if (!Number.isInteger(itemId) || itemId <= 0) {
+		return res.status(400).json({ erro: "Identificador do item inválido." });
+	}
+
+	try {
+		const result = await pool.query(
+			`UPDATE checklist_itens
+			 SET ativo = FALSE
+			 WHERE id = $1 AND ativo = TRUE
+			 RETURNING id AS item_id, descricao, ativo`
+			,
+			[itemId]
+		);
+
+		if (result.rowCount === 0) {
+			return res.status(404).json({ erro: "Item não encontrado." });
+		}
+
+		await pool.query(
+			`DELETE FROM checklist_dias
+			 WHERE item_id = $1
+			   AND data = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date`,
+			[itemId]
+		);
+
+		res.status(200).json(result.rows[0]);
 	} catch (error) {
 		res.status(500).json({ erro: error.message });
 	}

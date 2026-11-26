@@ -40,6 +40,8 @@ function Checklist() {
   const [atualizandoItemId, setAtualizandoItemId] = useState(null);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
+  const [editandoItemId, setEditandoItemId] = useState(null);
+  const [descricaoEdicao, setDescricaoEdicao] = useState("");
 
   const carregarChecklist = useCallback(async () => {
     try {
@@ -167,6 +169,58 @@ function Checklist() {
     } finally {
       setSalvando(false);
     }
+
+    function iniciarEdicao(item) {
+      setEditandoItemId(item.item_id);
+      setDescricaoEdicao(item.descricao);
+      setErro("");
+      setMensagem("");
+    }
+
+    function cancelarEdicao() {
+      setEditandoItemId(null);
+      setDescricaoEdicao("");
+    }
+
+    async function salvarEdicao(itemId) {
+      const descricao = descricaoEdicao.trim();
+      if (!descricao) {
+        setErro("A descrição do item é obrigatória.");
+        return;
+      }
+
+      try {
+        setAtualizandoItemId(itemId);
+        setErro("");
+        await api.put(`/checklist/itens/${itemId}`, { descricao });
+        setItens((atuais) => atuais.map((item) =>
+          item.item_id === itemId ? { ...item, descricao } : item
+        ));
+        cancelarEdicao();
+        setMensagem("Item do checklist atualizado.");
+      } catch (error) {
+        setErro(error.response?.data?.erro || "Não foi possível editar o item.");
+      } finally {
+        setAtualizandoItemId(null);
+      }
+    }
+
+    async function excluirItem(itemId) {
+      if (!window.confirm("Deseja remover este item da lista de checklist?")) return;
+
+      try {
+        setAtualizandoItemId(itemId);
+        setErro("");
+        await api.delete(`/checklist/itens/${itemId}`);
+        setItens((atuais) => atuais.filter((item) => item.item_id !== itemId));
+        cancelarEdicao();
+        setMensagem("Item removido da lista de checklist.");
+      } catch (error) {
+        setErro(error.response?.data?.erro || "Não foi possível remover o item.");
+      } finally {
+        setAtualizandoItemId(null);
+      }
+    }
   }
 
   async function alterarConclusao(itemId, concluido) {
@@ -280,29 +334,31 @@ function Checklist() {
           </div>
         </div>
 
-        <form className="checklistAddForm" onSubmit={adicionarItem}>
-          <label className="checklistFormLabel" htmlFor="novo-checklist-item">
-            Adicionar item à rotina
-          </label>
-          <div className="checklistFormRow">
-            <input
-              id="novo-checklist-item"
-              className="checklistInput"
-              type="text"
-              value={novoItem}
-              onChange={(event) => setNovoItem(event.target.value)}
-              placeholder="Ex.: higienizar as bancadas"
-              maxLength={300}
-            />
-            <button
-              className="checklistButton checklistButtonPrimary"
-              type="submit"
-              disabled={salvando || !novoItem.trim()}
-            >
-              {salvando ? "Adicionando..." : "＋ Adicionar item"}
-            </button>
-          </div>
-        </form>
+        {usuarioEhAdmin && (
+          <form className="checklistAddForm" onSubmit={adicionarItem}>
+            <label className="checklistFormLabel" htmlFor="novo-checklist-item">
+              Adicionar item à rotina
+            </label>
+            <div className="checklistFormRow">
+              <input
+                id="novo-checklist-item"
+                className="checklistInput"
+                type="text"
+                value={novoItem}
+                onChange={(event) => setNovoItem(event.target.value)}
+                placeholder="Ex.: higienizar as bancadas"
+                maxLength={300}
+              />
+              <button
+                className="checklistButton checklistButtonPrimary"
+                type="submit"
+                disabled={salvando || !novoItem.trim()}
+              >
+                {salvando ? "Adicionando..." : "＋ Adicionar item"}
+              </button>
+            </div>
+          </form>
+        )}
 
         {erro && <p className="checklistError" role="alert">{erro}</p>}
         {mensagem && <p className="checklistSuccess" role="status">{mensagem}</p>}
@@ -323,7 +379,18 @@ function Checklist() {
                   disabled={Boolean(item.concluido) || !responsaveisSelecionados[item.item_id] || atualizandoItemId === item.item_id}
                   onChange={() => alterarConclusao(item.item_id, true)}
                 />
-                <span className="checklistItemText">{item.descricao}</span>
+                {usuarioEhAdmin && editandoItemId === item.item_id ? (
+                  <input
+                    className="checklistEditInput"
+                    value={descricaoEdicao}
+                    maxLength={300}
+                    disabled={atualizandoItemId === item.item_id}
+                    onChange={(event) => setDescricaoEdicao(event.target.value)}
+                    aria-label={`Editar ${item.descricao}`}
+                  />
+                ) : (
+                  <span className="checklistItemText">{item.descricao}</span>
+                )}
                 <div className="checklistAssignment">
                   {usuarioEhAdmin ? (
                     <select
@@ -353,6 +420,49 @@ function Checklist() {
                   <span className={`checklistStatus${item.concluido ? " statusDone" : ""}`}>
                     {item.concluido ? "Concluído" : "Pendente"}
                   </span>
+                  {usuarioEhAdmin && (
+                    <div className="checklistItemActions">
+                      {editandoItemId === item.item_id ? (
+                        <>
+                          <button
+                            type="button"
+                            className="checklistActionButton checklistActionSave"
+                            onClick={() => salvarEdicao(item.item_id)}
+                            disabled={atualizandoItemId === item.item_id}
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            className="checklistActionButton"
+                            onClick={cancelarEdicao}
+                            disabled={atualizandoItemId === item.item_id}
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="checklistActionButton"
+                            onClick={() => iniciarEdicao(item)}
+                            disabled={atualizandoItemId === item.item_id}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="checklistActionButton checklistActionDelete"
+                            onClick={() => excluirItem(item.item_id)}
+                            disabled={atualizandoItemId === item.item_id}
+                          >
+                            Excluir
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))

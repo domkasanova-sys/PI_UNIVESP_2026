@@ -286,6 +286,45 @@
   white-space: nowrap;
 }
 
+.checklistEditInput {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  padding: 0 10px;
+  font: inherit;
+  outline: 3px solid rgb(37 99 235 / 10%);
+}
+
+.checklistItemActions {
+  display: flex;
+  gap: 6px;
+}
+
+.checklistActionButton {
+  min-height: 32px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 0 8px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.checklistActionSave {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+
+.checklistActionDelete {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .checklistEmpty,
 .checklistEmptyState {
   padding: 34px 20px;
@@ -336,9 +375,14 @@
   .checklistAssignment {
     grid-column: 2;
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .checklistResponsibleSelect {
     flex: 1;
+  }
+
+  .checklistItemActions {
+    margin-left: auto;
   }
 }
