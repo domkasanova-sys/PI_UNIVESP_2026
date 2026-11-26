@@ -93,23 +93,28 @@ function criarPdf(linhas) {
 
 router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
   try {
-    const dataRelatorio = typeof req.query.data === "string"
-      ? req.query.data
-      : "";
-    const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(dataRelatorio);
-
-    if (dataRelatorio && !dataValida) {
-      return res.status(400).json({ error: "Data inválida." });
-    }
-
-    const dataSelecionada = dataValida
-      ? dataRelatorio
-      : new Intl.DateTimeFormat("en-CA", {
+    const hoje = new Intl.DateTimeFormat("en-CA", {
           timeZone: "America/Sao_Paulo",
           year: "numeric",
           month: "2-digit",
           day: "2-digit",
         }).format(new Date());
+    const dataInicial = typeof req.query.inicio === "string"
+      ? req.query.inicio
+      : typeof req.query.data === "string" ? req.query.data : hoje;
+    const dataFinal = typeof req.query.fim === "string"
+      ? req.query.fim
+      : typeof req.query.data === "string" ? req.query.data : dataInicial;
+    const dataISOValida = (data) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return false;
+      const dataParseada = new Date(`${data}T00:00:00Z`);
+      return !Number.isNaN(dataParseada.getTime()) &&
+        dataParseada.toISOString().slice(0, 10) === data;
+    };
+
+    if (!dataISOValida(dataInicial) || !dataISOValida(dataFinal) || dataInicial > dataFinal) {
+      return res.status(400).json({ error: "Informe um período válido, com a data inicial anterior ou igual à final." });
+    }
 
     const [tarefas, checklist] = await Promise.all([
       pool.query(
@@ -117,43 +122,50 @@ router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
                 tarefas.observacao, funcionarios.nome AS funcionario_nome
          FROM tarefas
          LEFT JOIN funcionarios ON tarefas.funcionario_id = funcionarios.id
-         WHERE tarefas.prazo::date = $1::date
+         WHERE tarefas.prazo::date BETWEEN $1::date AND $2::date
          ORDER BY tarefas.finalizado ASC, tarefas.prazo ASC NULLS LAST, tarefas.id DESC`
-        ,
-        [dataSelecionada]
+        , [dataInicial, dataFinal]
       ),
       pool.query(
-        `SELECT item.descricao, dia.concluido, funcionario.nome AS responsavel
+        `SELECT
+           item.id AS item_id,
+           item.descricao,
+           funcionario.nome AS responsavel,
+           COUNT(*)::int AS vezes_concluido
          FROM checklist_dias AS dia
          JOIN checklist_itens AS item ON item.id = dia.item_id
-         LEFT JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
-         WHERE dia.data = $1::date
-         ORDER BY dia.id`
-        ,
-        [dataSelecionada]
+         JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
+         WHERE dia.data BETWEEN $1::date AND $2::date
+           AND dia.concluido = TRUE
+         GROUP BY item.id, item.descricao, funcionario.id, funcionario.nome
+         ORDER BY item.descricao, funcionario.nome`
+        , [dataInicial, dataFinal]
       ),
     ]);
 
-    const dataFormatada = new Intl.DateTimeFormat("pt-BR", {
+    const formatarData = (data) => new Intl.DateTimeFormat("pt-BR", {
       timeZone: "UTC",
-    }).format(new Date(`${dataSelecionada}T12:00:00Z`));
+    }).format(new Date(`${data}T12:00:00Z`));
+    const periodoFormatado = dataInicial === dataFinal
+      ? formatarData(dataInicial)
+      : `${formatarData(dataInicial)} a ${formatarData(dataFinal)}`;
     const agora = new Intl.DateTimeFormat("pt-BR", {
       timeZone: "America/Sao_Paulo",
       dateStyle: "short",
     }).format(new Date());
     const linhas = [
       "RELATORIO DE TAREFAS E CHECKLIST",
-      `Data selecionada: ${dataFormatada}`,
+      `Periodo: ${periodoFormatado}`,
       `Gerado em: ${agora}`,
       "",
       `Resumo: ${tarefas.rows.filter((item) => item.finalizado).length} tarefas concluidas de ${tarefas.rows.length}`,
-      `Checklist: ${checklist.rows.filter((item) => item.concluido).length} concluidos de ${checklist.rows.length}`,
+      `Checklist: ${checklist.rows.reduce((total, item) => total + item.vezes_concluido, 0)} conclusoes registradas`,
       "",
       "TAREFAS",
     ];
 
     if (tarefas.rows.length === 0) {
-      linhas.push("Nenhuma tarefa com prazo nesta data.");
+      linhas.push("Nenhuma tarefa com prazo neste periodo.");
     } else {
       tarefas.rows.forEach((item, indice) => {
         const prazo = item.prazo
@@ -172,19 +184,24 @@ router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
       });
     }
 
-    linhas.push("CHECKLIST DE HOJE");
+    linhas.push("CHECKLIST POR ITEM E FUNCIONARIO");
     if (checklist.rows.length === 0) {
-      linhas.push("Nenhum item gerado para hoje.");
+      linhas.push("Nenhuma conclusao de checklist registrada neste periodo.");
     } else {
-      checklist.rows.forEach((item, indice) => {
-        linhas.push(`${indice + 1}. ${item.descricao}`);
-        linhas.push(`Status: ${item.concluido ? "Concluido" : "Pendente"} | Responsavel: ${item.responsavel || "Nao informado"}`);
+      let itemAtual = null;
+      checklist.rows.forEach((item) => {
+        if (itemAtual !== item.item_id) {
+          itemAtual = item.item_id;
+          linhas.push("");
+          linhas.push(`Item: ${item.descricao}`);
+        }
+        linhas.push(`- ${item.responsavel}: ${item.vezes_concluido} vez(es)`);
       });
     }
 
     const pdf = criarPdf(linhas);
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="relatorio-tarefas-checklist-${agora.replace(/\//g, "-")}.pdf"`);
+    res.setHeader("Content-Disposition", `attachment; filename="relatorio-tarefas-checklist-${dataInicial}-a-${dataFinal}.pdf"`);
     res.status(200).send(pdf);
   } catch (error) {
     res.status(500).json({ error: error.message });

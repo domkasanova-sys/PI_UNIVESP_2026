@@ -40,9 +40,10 @@ function Checklist() {
   const [atualizandoItemId, setAtualizandoItemId] = useState(null);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
-  const [dataRelatorio, setDataRelatorio] = useState(() =>
-    obterDataBrasilia()
-  );
+  const [periodoRelatorio, setPeriodoRelatorio] = useState(() => {
+    const hoje = obterDataBrasilia();
+    return { inicio: hoje, fim: hoje };
+  });
   const [editandoItemId, setEditandoItemId] = useState(null);
   const [descricaoEdicao, setDescricaoEdicao] = useState("");
 
@@ -138,13 +139,13 @@ function Checklist() {
       setErro("");
       setMensagem("");
       const resposta = await api.get("/checklist/relatorio/pdf", {
-        params: { data: dataRelatorio },
+        params: periodoRelatorio,
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([resposta.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `relatorio-checklist-${dataRelatorio}.pdf`;
+      link.download = `relatorio-checklist-${periodoRelatorio.inicio}-a-${periodoRelatorio.fim}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -313,16 +314,36 @@ function Checklist() {
                   className="checklistButton checklistButtonPrimary"
                   type="button"
                   onClick={baixarRelatorio}
-                  disabled={baixandoRelatorio || reiniciando || gerando || !dataRelatorio}
+                  disabled={
+                    baixandoRelatorio ||
+                    reiniciando ||
+                    gerando ||
+                    !periodoRelatorio.inicio ||
+                    !periodoRelatorio.fim ||
+                    periodoRelatorio.inicio > periodoRelatorio.fim
+                  }
                 >
                   {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
                 </button>
                 <input
                   className="checklistDateInput"
                   type="date"
-                  aria-label="Data do relatório"
-                  value={dataRelatorio}
-                  onChange={(event) => setDataRelatorio(event.target.value)}
+                  aria-label="Início do período do relatório"
+                  value={periodoRelatorio.inicio}
+                  onChange={(event) => setPeriodoRelatorio((periodo) => ({
+                    ...periodo,
+                    inicio: event.target.value,
+                  }))}
+                />
+                <input
+                  className="checklistDateInput"
+                  type="date"
+                  aria-label="Fim do período do relatório"
+                  value={periodoRelatorio.fim}
+                  onChange={(event) => setPeriodoRelatorio((periodo) => ({
+                    ...periodo,
+                    fim: event.target.value,
+                  }))}
                 />
               </>
             )}

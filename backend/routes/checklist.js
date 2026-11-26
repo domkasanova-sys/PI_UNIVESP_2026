@@ -246,90 +246,113 @@ router.post("/reiniciar-dia", async (req, res) => {
 
 router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
 	try {
-		const dataRelatorio = typeof req.query.data === "string"
-			? req.query.data
-			: "";
-		const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(dataRelatorio);
-
-		if (dataRelatorio && !dataValida) {
-			return res.status(400).json({ erro: "Data inválida." });
-		}
-
-		const dataSelecionada = dataValida
-			? dataRelatorio
-			: new Intl.DateTimeFormat("en-CA", {
+		const hoje = new Intl.DateTimeFormat("en-CA", {
 					timeZone: "America/Sao_Paulo",
 					year: "numeric",
 					month: "2-digit",
 					day: "2-digit",
 				}).format(new Date());
+		const dataInicial = typeof req.query.inicio === "string"
+			? req.query.inicio
+			: typeof req.query.data === "string" ? req.query.data : hoje;
+		const dataFinal = typeof req.query.fim === "string"
+			? req.query.fim
+			: typeof req.query.data === "string" ? req.query.data : dataInicial;
+		const dataISOValida = (data) => {
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return false;
+			const dataParseada = new Date(`${data}T00:00:00Z`);
+			return !Number.isNaN(dataParseada.getTime()) &&
+				dataParseada.toISOString().slice(0, 10) === data;
+		};
 
-		const dataHoje = new Intl.DateTimeFormat("en-CA", {
-			timeZone: "America/Sao_Paulo",
-			year: "numeric",
-			month: "2-digit",
-			day: "2-digit",
-		}).format(new Date());
+		if (!dataISOValida(dataInicial) || !dataISOValida(dataFinal) || dataInicial > dataFinal) {
+			return res.status(400).json({ erro: "Informe um período válido, com a data inicial anterior ou igual à final." });
+		}
 
-		if (dataSelecionada === dataHoje) {
+		if (dataInicial <= hoje && dataFinal >= hoje) {
 			await gerarChecklistDoDia();
 		}
 
-		const result = await pool.query(
+		const [itens, funcionarios] = await Promise.all([
+			pool.query(
 			`SELECT
+				 item.id AS item_id,
 				 item.descricao,
-				 dia.concluido,
-				 funcionario.nome AS responsavel,
-				 dia.concluido_em
-			 FROM checklist_dias AS dia
-			 JOIN checklist_itens AS item ON item.id = dia.item_id
-			 LEFT JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
-			 WHERE dia.data = $1::date
-			 ORDER BY dia.id`
-			,
-			[dataSelecionada]
-		);
+				 COUNT(dia.id)::int AS ocorrencias,
+				 COUNT(dia.id) FILTER (WHERE dia.concluido)::int AS concluidos
+			 FROM checklist_itens AS item
+			 LEFT JOIN checklist_dias AS dia
+			   ON dia.item_id = item.id
+			  AND dia.data BETWEEN $1::date AND $2::date
+			 WHERE item.ativo = TRUE OR dia.id IS NOT NULL
+			 GROUP BY item.id, item.descricao
+			 ORDER BY item.descricao`,
+			[dataInicial, dataFinal]
+			),
+			pool.query(
+				`SELECT
+					 dia.item_id,
+					 funcionario.nome AS responsavel,
+					 COUNT(*)::int AS vezes_concluido
+				 FROM checklist_dias AS dia
+				 JOIN checklist_itens AS item ON item.id = dia.item_id
+				 JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
+				 WHERE dia.data BETWEEN $1::date AND $2::date
+				   AND dia.concluido = TRUE
+				 GROUP BY dia.item_id, funcionario.id, funcionario.nome
+				 ORDER BY item_id, funcionario.nome`,
+				[dataInicial, dataFinal]
+			),
+		]);
 
-		const dataFormatada = new Intl.DateTimeFormat("pt-BR", {
+		const formatarData = (data) => new Intl.DateTimeFormat("pt-BR", {
 			timeZone: "UTC",
-		}).format(new Date(`${dataSelecionada}T12:00:00Z`));
+		}).format(new Date(`${data}T12:00:00Z`));
+		const periodoFormatado = dataInicial === dataFinal
+			? formatarData(dataInicial)
+			: `${formatarData(dataInicial)} a ${formatarData(dataFinal)}`;
 		const agora = new Intl.DateTimeFormat("pt-BR", {
 			timeZone: "America/Sao_Paulo",
 			dateStyle: "short",
 		}).format(new Date());
-		const concluidos = result.rows.filter((item) => item.concluido).length;
+		const concluidos = itens.rows.reduce((total, item) => total + item.concluidos, 0);
+		const resumoPorItem = new Map();
+		for (const funcionario of funcionarios.rows) {
+			const lista = resumoPorItem.get(funcionario.item_id) || [];
+			lista.push(funcionario);
+			resumoPorItem.set(funcionario.item_id, lista);
+		}
 		const linhas = [
-			"RELATORIO DO CHECKLIST DIARIO",
-			`Data selecionada: ${dataFormatada}`,
+			"RELATORIO DO CHECKLIST POR PERIODO",
+			`Periodo: ${periodoFormatado}`,
 			`Gerado em: ${agora}`,
 			"",
-			`Resumo: ${concluidos} concluidos de ${result.rows.length} itens`,
+			`Resumo: ${concluidos} conclusoes em ${itens.rows.reduce((total, item) => total + item.ocorrencias, 0)} ocorrencias de itens`,
 			"",
 		];
 
-		if (result.rows.length === 0) {
-			linhas.push("Nenhum item gerado nesta data.");
+		if (itens.rows.length === 0) {
+			linhas.push("Nenhum item encontrado neste periodo.");
 		} else {
-			result.rows.forEach((item, indice) => {
-				let conclusao = "";
-				if (item.concluido_em) {
-					conclusao = new Intl.DateTimeFormat("pt-BR", {
-						timeZone: "America/Sao_Paulo",
-						dateStyle: "short",
-						timeStyle: "short",
-					}).format(new Date(item.concluido_em));
-				}
-
+			itens.rows.forEach((item, indice) => {
 				linhas.push(`${indice + 1}. ${item.descricao}`);
-				linhas.push(`Status: ${item.concluido ? "Concluido" : "Pendente"} | Responsavel: ${item.responsavel || "Nao informado"}`);
-				if (conclusao) linhas.push(`Concluido em: ${conclusao}`);
+				linhas.push(`Concluido ${item.concluidos} vez(es) em ${item.ocorrencias} ocorrencia(s)`);
+				const realizadosPor = resumoPorItem.get(item.item_id) || [];
+				if (realizadosPor.length) {
+					linhas.push("Realizacoes por funcionario:");
+					realizadosPor.forEach((funcionario) => {
+						linhas.push(`- ${funcionario.responsavel}: ${funcionario.vezes_concluido} vez(es)`);
+					});
+				} else {
+					linhas.push("Sem conclusoes registradas neste periodo.");
+				}
 				linhas.push("");
 			});
 		}
 
 		const pdf = criarPdf(linhas);
 		res.setHeader("Content-Type", "application/pdf");
-		res.setHeader("Content-Disposition", `attachment; filename="relatorio-checklist-${agora.replace(/\//g, "-")}.pdf"`);
+		res.setHeader("Content-Disposition", `attachment; filename="relatorio-checklist-${dataInicial}-a-${dataFinal}.pdf"`);
 		res.status(200).send(pdf);
 	} catch (error) {
 		res.status(500).json({ erro: error.message });

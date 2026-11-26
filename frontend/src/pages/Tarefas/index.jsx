@@ -9,14 +9,15 @@ function Tarefas() {
   const [idEdicao, setIdEdicao] = useState(null);
   const [busca, setBusca] = useState("");
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
-  const [dataRelatorio, setDataRelatorio] = useState(() =>
-    new Intl.DateTimeFormat("en-CA", {
+  const [periodoRelatorio, setPeriodoRelatorio] = useState(() => {
+    const hoje = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Sao_Paulo",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-    }).format(new Date())
-  );
+    }).format(new Date());
+    return { inicio: hoje, fim: hoje };
+  });
 
   const [funcionarios, setFuncionarios] = useState([]);
 
@@ -155,13 +156,13 @@ function Tarefas() {
     try {
       setBaixandoRelatorio(true);
       const resposta = await api.get("/tarefas/relatorio/pdf", {
-        params: { data: dataRelatorio },
+        params: periodoRelatorio,
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([resposta.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `relatorio-tarefas-checklist-${dataRelatorio}.pdf`;
+      link.download = `relatorio-tarefas-checklist-${periodoRelatorio.inicio}-a-${periodoRelatorio.fim}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -193,18 +194,36 @@ function Tarefas() {
               </div>
             </div>
             <div className="relatorioTarefasControles">
-              <label htmlFor="data-relatorio-tarefas">Data do relatório</label>
+              <label htmlFor="inicio-relatorio-tarefas">Período do relatório</label>
               <input
-                id="data-relatorio-tarefas"
+                id="inicio-relatorio-tarefas"
                 type="date"
-                value={dataRelatorio}
-                onChange={(event) => setDataRelatorio(event.target.value)}
+                aria-label="Início do período do relatório"
+                value={periodoRelatorio.inicio}
+                onChange={(event) => setPeriodoRelatorio((periodo) => ({
+                  ...periodo,
+                  inicio: event.target.value,
+                }))}
+              />
+              <input
+                type="date"
+                aria-label="Fim do período do relatório"
+                value={periodoRelatorio.fim}
+                onChange={(event) => setPeriodoRelatorio((periodo) => ({
+                  ...periodo,
+                  fim: event.target.value,
+                }))}
               />
               <button
                 type="button"
                 className="btnRelatorio"
                 onClick={baixarRelatorio}
-                disabled={baixandoRelatorio || !dataRelatorio}
+                disabled={
+                  baixandoRelatorio ||
+                  !periodoRelatorio.inicio ||
+                  !periodoRelatorio.fim ||
+                  periodoRelatorio.inicio > periodoRelatorio.fim
+                }
               >
                 {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
               </button>

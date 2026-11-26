@@ -38,10 +38,9 @@
 }
 
 .relatorioTarefasControles label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
+  color: #555;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .relatorioTarefasControles input,
