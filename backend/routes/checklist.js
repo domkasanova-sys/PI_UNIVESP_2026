@@ -77,6 +77,7 @@ async function gerarChecklistDoDia() {
 		 SELECT item.id, (NOW() AT TIME ZONE 'America/Sao_Paulo')::date, FALSE
 		 FROM checklist_itens AS item
 		 WHERE item.ativo = TRUE
+		 ORDER BY item.ordem, item.id
 		 ON CONFLICT (item_id, data) DO NOTHING
 		 RETURNING id`
 	);
@@ -98,7 +99,7 @@ router.get("/dia", async (req, res) => {
 			 LEFT JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
 			 WHERE dia.data = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
 			   AND item.ativo = TRUE
-			 ORDER BY dia.id`
+			 ORDER BY item.ordem, dia.id`
 		);
 
 		res.status(200).json(result.rows);
@@ -118,9 +119,13 @@ router.post("/itens", autenticarAdmin, async (req, res) => {
 
 	try {
 		const result = await pool.query(
-			`INSERT INTO checklist_itens (descricao, ativo)
-			 VALUES ($1, TRUE)
-			 RETURNING id AS item_id, descricao, ativo`,
+			`INSERT INTO checklist_itens (descricao, ativo, ordem)
+			 VALUES (
+			   $1,
+			   TRUE,
+			   COALESCE((SELECT MAX(ordem) + 1 FROM checklist_itens), 1)
+			 )
+			 RETURNING id AS item_id, descricao, ativo, ordem`,
 			[descricao]
 		);
 
@@ -159,6 +164,64 @@ router.put("/itens/:id", autenticarAdmin, async (req, res) => {
 		res.status(200).json(result.rows[0]);
 	} catch (error) {
 		res.status(500).json({ erro: error.message });
+	}
+});
+
+router.put("/itens/:id/mover", autenticarAdmin, async (req, res) => {
+	const itemId = Number(req.params.id);
+	const direcao = req.body.direcao;
+
+	if (!Number.isInteger(itemId) || itemId <= 0) {
+		return res.status(400).json({ erro: "Identificador do item inválido." });
+	}
+	if (direcao !== "cima" && direcao !== "baixo") {
+		return res.status(400).json({ erro: "A direção deve ser 'cima' ou 'baixo'." });
+	}
+
+	const client = await pool.connect();
+	try {
+		await client.query("BEGIN");
+		const lista = await client.query(
+			`SELECT id, ordem
+			 FROM checklist_itens
+			 WHERE ativo = TRUE
+			 ORDER BY ordem, id
+			 FOR UPDATE`
+		);
+		const itensOrdenados = [...lista.rows];
+		const indice = itensOrdenados.findIndex((item) => Number(item.id) === itemId);
+
+		if (indice === -1) {
+			await client.query("ROLLBACK");
+			return res.status(404).json({ erro: "Item não encontrado." });
+		}
+
+		const indiceDestino = direcao === "cima" ? indice - 1 : indice + 1;
+		if (indiceDestino >= 0 && indiceDestino < itensOrdenados.length) {
+			[itensOrdenados[indice], itensOrdenados[indiceDestino]] =
+				[itensOrdenados[indiceDestino], itensOrdenados[indice]];
+
+			for (let posicao = 0; posicao < itensOrdenados.length; posicao += 1) {
+				await client.query(
+					"UPDATE checklist_itens SET ordem = $1 WHERE id = $2",
+					[posicao + 1, itensOrdenados[posicao].id]
+				);
+			}
+		}
+
+		await client.query("COMMIT");
+		const resultado = await client.query(
+			`SELECT id AS item_id, descricao, ordem
+			 FROM checklist_itens
+			 WHERE ativo = TRUE
+			 ORDER BY ordem, id`
+		);
+		res.status(200).json({ itens: resultado.rows });
+	} catch (error) {
+		await client.query("ROLLBACK");
+		res.status(500).json({ erro: error.message });
+	} finally {
+		client.release();
 	}
 });
 
@@ -280,8 +343,8 @@ router.get("/relatorio/dados", autenticarAdmin, async (req, res) => {
 				   ON dia.item_id = item.id
 				  AND dia.data BETWEEN $1::date AND $2::date
 				 WHERE item.ativo = TRUE OR dia.id IS NOT NULL
-				 GROUP BY item.id, item.descricao
-				 ORDER BY item.descricao`,
+				 GROUP BY item.id, item.descricao, item.ordem
+				 ORDER BY item.ordem, item.id`,
 				[inicio, fim]
 			),
 			pool.query(
@@ -364,8 +427,8 @@ router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
 			   ON dia.item_id = item.id
 			  AND dia.data BETWEEN $1::date AND $2::date
 			 WHERE item.ativo = TRUE OR dia.id IS NOT NULL
-			 GROUP BY item.id, item.descricao
-			 ORDER BY item.descricao`,
+			 GROUP BY item.id, item.descricao, item.ordem
+			 ORDER BY item.ordem, item.id`,
 			[dataInicial, dataFinal]
 			),
 			pool.query(

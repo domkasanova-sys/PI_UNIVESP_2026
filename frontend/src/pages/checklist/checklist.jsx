@@ -251,6 +251,25 @@ function Checklist() {
     }
   }
 
+  async function moverItem(itemId, direcao) {
+    try {
+      setAtualizandoItemId(itemId);
+      setErro("");
+      setMensagem("");
+      const { data } = await api.put(`/checklist/itens/${itemId}/mover`, { direcao });
+      const idsOrdenados = data.itens.map((item) => Number(item.item_id));
+      setItens((atuais) => {
+        const itensPorId = new Map(atuais.map((item) => [Number(item.item_id), item]));
+        return idsOrdenados.map((id) => itensPorId.get(id)).filter(Boolean);
+      });
+      setMensagem("Ordem do checklist atualizada.");
+    } catch (error) {
+      setErro(error.response?.data?.erro || "Não foi possível reorganizar o checklist.");
+    } finally {
+      setAtualizandoItemId(null);
+    }
+  }
+
   async function alterarConclusao(itemId, concluido) {
     const funcionarioId = responsaveisSelecionados[itemId];
     if (concluido && !funcionarioId) {
@@ -494,7 +513,7 @@ function Checklist() {
           {carregando ? (
             <p className="checklistEmpty">Carregando checklist...</p>
           ) : itens.length ? (
-            itens.map((item) => (
+            itens.map((item, indice) => (
               <div
                 className={`checklistItem${item.concluido ? " isDone" : ""}`}
                 key={item.item_id}
@@ -506,18 +525,42 @@ function Checklist() {
                   disabled={Boolean(item.concluido) || !responsaveisSelecionados[item.item_id] || atualizandoItemId === item.item_id}
                   onChange={() => alterarConclusao(item.item_id, true)}
                 />
-                {usuarioEhAdmin && editandoItemId === item.item_id ? (
-                  <input
-                    className="checklistEditInput"
-                    value={descricaoEdicao}
-                    maxLength={300}
-                    disabled={atualizandoItemId === item.item_id}
-                    onChange={(event) => setDescricaoEdicao(event.target.value)}
-                    aria-label={`Editar ${item.descricao}`}
-                  />
-                ) : (
-                  <span className="checklistItemText">{item.descricao}</span>
-                )}
+                <div className="checklistItemMain">
+                  {usuarioEhAdmin && editandoItemId === item.item_id ? (
+                    <input
+                      className="checklistEditInput"
+                      value={descricaoEdicao}
+                      maxLength={300}
+                      disabled={atualizandoItemId === item.item_id}
+                      onChange={(event) => setDescricaoEdicao(event.target.value)}
+                      aria-label={`Editar ${item.descricao}`}
+                    />
+                  ) : (
+                    <span className="checklistItemText">{item.descricao}</span>
+                  )}
+                  {usuarioEhAdmin && editandoItemId !== item.item_id && (
+                    <div className="checklistOrderActions" aria-label={`Ordenar ${item.descricao}`}>
+                      <button
+                        type="button"
+                        aria-label={`Mover ${item.descricao} para cima`}
+                        title="Mover para cima"
+                        disabled={indice === 0 || atualizandoItemId !== null}
+                        onClick={() => moverItem(item.item_id, "cima")}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Mover ${item.descricao} para baixo`}
+                        title="Mover para baixo"
+                        disabled={indice === itens.length - 1 || atualizandoItemId !== null}
+                        onClick={() => moverItem(item.item_id, "baixo")}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="checklistAssignment">
                   {usuarioEhAdmin ? (
                     <select

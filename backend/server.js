@@ -31,7 +31,11 @@ const PORT = process.env.PORT || 3000;
 
 async function iniciarServidor() {
   try {
-    for (const arquivoMigracao of ["001_tarefas_observacao.sql", "002_foto_perfil.sql"]) {
+    for (const arquivoMigracao of [
+      "001_tarefas_observacao.sql",
+      "002_foto_perfil.sql",
+      "003_checklist_ordem.sql",
+    ]) {
       const migracao = fs.readFileSync(
         path.join(__dirname, "migrations", arquivoMigracao),
         "utf8"

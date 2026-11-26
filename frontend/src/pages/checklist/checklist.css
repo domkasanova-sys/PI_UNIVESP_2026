@@ -363,6 +363,50 @@
   box-shadow: inset 4px 0 #22c55e;
 }
 
+.checklistItemMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.checklistItemText {
+  flex: 1;
+  min-width: 0;
+}
+
+.checklistOrderActions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checklistOrderActions button {
+  width: 26px;
+  height: 22px;
+  border: 1px solid #dbe2ea;
+  border-radius: 5px;
+  padding: 0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.checklistOrderActions button:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.checklistOrderActions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .checklistItem input {
   width: 19px;
   height: 19px;
@@ -542,6 +586,14 @@
     grid-column: 2;
     justify-content: space-between;
     flex-wrap: wrap;
+  }
+
+  .checklistItemMain {
+    grid-column: 2;
+  }
+
+  .checklistItemText {
+    grid-column: auto;
   }
 
   .checklistResponsibleSelect {
