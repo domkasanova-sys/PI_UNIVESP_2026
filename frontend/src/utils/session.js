@@ -28,5 +28,5 @@ export function limparUsuarioLogado() {
 }
 
 export function isAdmin(usuario = getUsuarioLogado()) {
-  return !usuario || usuario.is_admin === true;
+  return usuario?.is_admin === true;
 }

@@ -1,6 +1,75 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
+const autenticarAdmin = require("../middleware/autenticarAdmin");
+
+function removerAcentos(valor) {
+	return String(valor || "")
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "");
+}
+
+function escaparPdf(valor) {
+	return removerAcentos(valor)
+		.replace(/\\/g, "\\\\")
+		.replace(/\(/g, "\\(")
+		.replace(/\)/g, "\\)");
+}
+
+function criarPdf(linhas) {
+	const largura = 595;
+	const altura = 842;
+	const margemX = 50;
+	let y = 790;
+	const paginas = [[]];
+
+	for (const linha of linhas) {
+		if (y < 55) {
+			paginas.push([]);
+			y = 790;
+		}
+		paginas[paginas.length - 1].push(`BT /F1 10 Tf ${margemX} ${y} Td (${escaparPdf(linha)}) Tj ET`);
+		y -= 16;
+	}
+
+	const objetos = ["<< /Type /Catalog /Pages 2 0 R >>"];
+	const idsPaginas = [];
+
+	for (let i = 0; i < paginas.length; i += 1) {
+		idsPaginas.push(3 + i * 2);
+	}
+
+	objetos.push(`<< /Type /Pages /Kids [${idsPaginas.map((id) => `${id} 0 R`).join(" ")}] /Count ${paginas.length} >>`);
+	const idFonte = 3 + paginas.length * 2;
+
+	paginas.forEach((conteudo, indice) => {
+		const stream = conteudo.join("\n");
+		const idPagina = 3 + indice * 2;
+		const idConteudo = idPagina + 1;
+		objetos.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${largura} ${altura}] /Resources << /Font << /F1 ${idFonte} 0 R >> >> /Contents ${idConteudo} 0 R >>`);
+		objetos.push(`<< /Length ${Buffer.byteLength(stream, "utf8")} >>\nstream\n${stream}\nendstream`);
+	});
+
+	objetos.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+
+	let pdf = "%PDF-1.4\n";
+	const offsets = [0];
+
+	objetos.forEach((objeto, indice) => {
+		offsets.push(Buffer.byteLength(pdf, "utf8"));
+		pdf += `${indice + 1} 0 obj\n${objeto}\nendobj\n`;
+	});
+
+	const inicioXref = Buffer.byteLength(pdf, "utf8");
+	pdf += `xref\n0 ${objetos.length + 1}\n`;
+	pdf += "0000000000 65535 f \n";
+	for (let i = 1; i <= objetos.length; i += 1) {
+		pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+	}
+	pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF`;
+
+	return Buffer.from(pdf, "utf8");
+}
 
 async function gerarChecklistDoDia() {
 	return pool.query(
@@ -103,6 +172,65 @@ router.post("/reiniciar-dia", async (req, res) => {
 			message: "Checklist de hoje reiniciado com sucesso.",
 			quantidade_reiniciada: result.rowCount,
 		});
+	} catch (error) {
+		res.status(500).json({ erro: error.message });
+	}
+});
+
+router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
+	try {
+		await gerarChecklistDoDia();
+
+		const result = await pool.query(
+			`SELECT
+				 item.descricao,
+				 dia.concluido,
+				 funcionario.nome AS responsavel,
+				 dia.concluido_em
+			 FROM checklist_dias AS dia
+			 JOIN checklist_itens AS item ON item.id = dia.item_id
+			 LEFT JOIN funcionarios AS funcionario ON funcionario.id = dia.responsavel_id
+			 WHERE dia.data = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+			 ORDER BY dia.id`
+		);
+
+		const agora = new Intl.DateTimeFormat("pt-BR", {
+			timeZone: "America/Sao_Paulo",
+			dateStyle: "short",
+		}).format(new Date());
+		const concluidos = result.rows.filter((item) => item.concluido).length;
+		const linhas = [
+			"RELATORIO DO CHECKLIST DIARIO",
+			`Gerado em: ${agora}`,
+			"",
+			`Resumo: ${concluidos} concluidos de ${result.rows.length} itens`,
+			"",
+		];
+
+		if (result.rows.length === 0) {
+			linhas.push("Nenhum item gerado para hoje.");
+		} else {
+			result.rows.forEach((item, indice) => {
+				let conclusao = "";
+				if (item.concluido_em) {
+					conclusao = new Intl.DateTimeFormat("pt-BR", {
+						timeZone: "America/Sao_Paulo",
+						dateStyle: "short",
+						timeStyle: "short",
+					}).format(new Date(item.concluido_em));
+				}
+
+				linhas.push(`${indice + 1}. ${item.descricao}`);
+				linhas.push(`Status: ${item.concluido ? "Concluido" : "Pendente"} | Responsavel: ${item.responsavel || "Nao informado"}`);
+				if (conclusao) linhas.push(`Concluido em: ${conclusao}`);
+				linhas.push("");
+			});
+		}
+
+		const pdf = criarPdf(linhas);
+		res.setHeader("Content-Type", "application/pdf");
+		res.setHeader("Content-Disposition", `attachment; filename="relatorio-checklist-${agora.replace(/\//g, "-")}.pdf"`);
+		res.status(200).send(pdf);
 	} catch (error) {
 		res.status(500).json({ erro: error.message });
 	}

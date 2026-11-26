@@ -35,6 +35,7 @@ function Checklist() {
   const [carregando, setCarregando] = useState(true);
   const [gerando, setGerando] = useState(false);
   const [reiniciando, setReiniciando] = useState(false);
+  const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [atualizandoItemId, setAtualizandoItemId] = useState(null);
   const [erro, setErro] = useState("");
@@ -123,6 +124,29 @@ function Checklist() {
       setErro(error.response?.data?.erro || "Não foi possível reiniciar o checklist de hoje.");
     } finally {
       setReiniciando(false);
+    }
+  }
+
+  async function baixarRelatorio() {
+    try {
+      setBaixandoRelatorio(true);
+      setErro("");
+      setMensagem("");
+      const resposta = await api.get("/checklist/relatorio/pdf", {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([resposta.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `relatorio-checklist-${obterDataBrasilia()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setErro(error.response?.data?.erro || "Não foi possível baixar o relatório do checklist.");
+    } finally {
+      setBaixandoRelatorio(false);
     }
   }
 
@@ -218,14 +242,24 @@ function Checklist() {
           </div>
           <div className="checklistHeaderActions">
             {usuarioEhAdmin && (
-              <button
-                className="checklistButton checklistButtonDanger"
-                type="button"
-                onClick={reiniciarChecklist}
-                disabled={reiniciando || gerando}
-              >
-                {reiniciando ? "Reiniciando..." : "Reiniciar checklist"}
-              </button>
+              <>
+                <button
+                  className="checklistButton checklistButtonDanger"
+                  type="button"
+                  onClick={reiniciarChecklist}
+                  disabled={reiniciando || gerando || baixandoRelatorio}
+                >
+                  {reiniciando ? "Reiniciando..." : "Reiniciar checklist"}
+                </button>
+                <button
+                  className="checklistButton checklistButtonPrimary"
+                  type="button"
+                  onClick={baixarRelatorio}
+                  disabled={baixandoRelatorio || reiniciando || gerando}
+                >
+                  {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
+                </button>
+              </>
             )}
             <button
               className="checklistButton checklistButtonSecondary"

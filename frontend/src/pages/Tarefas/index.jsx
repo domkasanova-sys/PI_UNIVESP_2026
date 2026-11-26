@@ -8,6 +8,7 @@ function Tarefas() {
   const [modoEdicao, setModoEdicao] = useState(false);
   const [idEdicao, setIdEdicao] = useState(null);
   const [busca, setBusca] = useState("");
+  const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
 
   const [funcionarios, setFuncionarios] = useState([]);
 
@@ -142,20 +143,54 @@ function Tarefas() {
     }
   }
 
+  async function baixarRelatorio() {
+    try {
+      setBaixandoRelatorio(true);
+      const resposta = await api.get("/tarefas/relatorio/pdf", {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([resposta.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `relatorio-tarefas-checklist-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao baixar o relatório em PDF.");
+    } finally {
+      setBaixandoRelatorio(false);
+    }
+  }
+
   return (
 
     <Layout title="Gestão - Tarefas" ativo="Gestão de Tarefas">
       <div className="containerTarefas">
         <div className="buscaTarefasContainer">
-          <label className="buscaTarefasLabel">Buscar tarefa</label>
-          <div className="buscaTarefasInputContainer">
-            <span className="buscaTarefasIcone">🔍</span>
-            <input
-              placeholder="Nome da tarefa"
-              className="buscaTarefasInput"
-              type="text"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)} />
+          <div className="buscaTarefasCabecalho">
+            <div>
+              <label className="buscaTarefasLabel">Buscar tarefa</label>
+              <div className="buscaTarefasInputContainer">
+                <span className="buscaTarefasIcone">🔍</span>
+                <input
+                  placeholder="Nome da tarefa"
+                  className="buscaTarefasInput"
+                  type="text"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)} />
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btnRelatorio"
+              onClick={baixarRelatorio}
+              disabled={baixandoRelatorio}
+            >
+              {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
+            </button>
           </div>
         </div>
 
