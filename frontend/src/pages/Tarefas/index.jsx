@@ -9,6 +9,9 @@ function Tarefas() {
   const [idEdicao, setIdEdicao] = useState(null);
   const [busca, setBusca] = useState("");
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
+  const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
+  const [relatorio, setRelatorio] = useState(null);
+  const [erroRelatorio, setErroRelatorio] = useState("");
   const [periodoRelatorio, setPeriodoRelatorio] = useState(() => {
     const hoje = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Sao_Paulo",
@@ -175,6 +178,21 @@ function Tarefas() {
     }
   }
 
+  async function visualizarRelatorio() {
+    try {
+      setCarregandoRelatorio(true);
+      setErroRelatorio("");
+      const { data } = await api.get("/tarefas/relatorio/dados", {
+        params: periodoRelatorio,
+      });
+      setRelatorio(data);
+    } catch (error) {
+      setErroRelatorio(error.response?.data?.error || "Erro ao carregar tarefas do período.");
+    } finally {
+      setCarregandoRelatorio(false);
+    }
+  }
+
   return (
 
     <Layout title="Gestão - Tarefas" ativo="Gestão de Tarefas">
@@ -200,20 +218,40 @@ function Tarefas() {
                 type="date"
                 aria-label="Início do período do relatório"
                 value={periodoRelatorio.inicio}
-                onChange={(event) => setPeriodoRelatorio((periodo) => ({
-                  ...periodo,
-                  inicio: event.target.value,
-                }))}
+                onChange={(event) => {
+                  setRelatorio(null);
+                  setPeriodoRelatorio((periodo) => ({
+                    ...periodo,
+                    inicio: event.target.value,
+                  }));
+                }}
               />
               <input
                 type="date"
                 aria-label="Fim do período do relatório"
                 value={periodoRelatorio.fim}
-                onChange={(event) => setPeriodoRelatorio((periodo) => ({
-                  ...periodo,
-                  fim: event.target.value,
-                }))}
+                onChange={(event) => {
+                  setRelatorio(null);
+                  setPeriodoRelatorio((periodo) => ({
+                    ...periodo,
+                    fim: event.target.value,
+                  }));
+                }}
               />
+              <button
+                type="button"
+                className="btnVisualizarRelatorio"
+                onClick={visualizarRelatorio}
+                disabled={
+                  carregandoRelatorio ||
+                  baixandoRelatorio ||
+                  !periodoRelatorio.inicio ||
+                  !periodoRelatorio.fim ||
+                  periodoRelatorio.inicio > periodoRelatorio.fim
+                }
+              >
+                {carregandoRelatorio ? "Carregando..." : "Visualizar na tela"}
+              </button>
               <button
                 type="button"
                 className="btnRelatorio"
@@ -230,6 +268,51 @@ function Tarefas() {
             </div>
           </div>
         </div>
+
+        {erroRelatorio && <p className="erroRelatorio" role="alert">{erroRelatorio}</p>}
+
+        {relatorio && (
+          <section className="relatorioTarefasPainel" aria-labelledby="relatorioTarefasTitulo">
+            <header className="relatorioTarefasResumo">
+              <div>
+                <p>RELATÓRIO DO PERÍODO</p>
+                <h2 id="relatorioTarefasTitulo">Tarefas por prazo</h2>
+                <span>
+                  {formatarDataBR(relatorio.inicio)} a {formatarDataBR(relatorio.fim)}
+                </span>
+              </div>
+              <div className="relatorioTarefasMetricas">
+                <strong>{relatorio.total}</strong><span>no total</span>
+                <strong>{relatorio.concluidas}</strong><span>concluídas</span>
+                <strong>{relatorio.pendentes}</strong><span>pendentes</span>
+              </div>
+            </header>
+            {relatorio.tarefas.length ? (
+              <div className="relatorioTarefasLista">
+                {relatorio.tarefas.map((item) => (
+                  <article className="relatorioTarefaItem" key={item.tarefa_id}>
+                    <div className="relatorioTarefaTopo">
+                      <h3>{item.titulo || "Sem título"}</h3>
+                      <span className={item.finalizado ? "tarefaRelatorioFeita" : "tarefaRelatorioPendente"}>
+                        {item.finalizado ? "Concluída" : "Pendente"}
+                      </span>
+                    </div>
+                    {item.descricao && <p>{item.descricao}</p>}
+                    <div className="relatorioTarefaDetalhes">
+                      <span>Responsável: {item.funcionario_nome || "Sem responsável"}</span>
+                      <span>Prazo: {formatarDataBR(item.prazo)}</span>
+                    </div>
+                    {item.observacao && (
+                      <p className="relatorioTarefaObservacao">Observação: {item.observacao}</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="relatorioTarefasVazio">Nenhuma tarefa com prazo neste período.</p>
+            )}
+          </section>
+        )}
 
         <div className="tituloSecao">
           {modoEdicao ? "Editar tarefa" : "Criar tarefa"}

@@ -91,6 +91,59 @@ function criarPdf(linhas) {
   return Buffer.from(pdf, "utf8");
 }
 
+router.get("/relatorio/dados", autenticarAdmin, async (req, res) => {
+  const hoje = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const dataInicial = typeof req.query.inicio === "string"
+    ? req.query.inicio
+    : typeof req.query.data === "string" ? req.query.data : hoje;
+  const dataFinal = typeof req.query.fim === "string"
+    ? req.query.fim
+    : typeof req.query.data === "string" ? req.query.data : dataInicial;
+  const dataISOValida = (data) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return false;
+    const dataParseada = new Date(`${data}T00:00:00Z`);
+    return !Number.isNaN(dataParseada.getTime()) &&
+      dataParseada.toISOString().slice(0, 10) === data;
+  };
+
+  if (!dataISOValida(dataInicial) || !dataISOValida(dataFinal) || dataInicial > dataFinal) {
+    return res.status(400).json({ error: "Informe um período válido, com a data inicial anterior ou igual à final." });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT tarefas.id AS tarefa_id,
+              tarefas.titulo,
+              tarefas.descricao,
+              tarefas.prazo,
+              tarefas.finalizado,
+              tarefas.observacao,
+              funcionarios.nome AS funcionario_nome
+       FROM tarefas
+       LEFT JOIN funcionarios ON tarefas.funcionario_id = funcionarios.id
+       WHERE tarefas.prazo::date BETWEEN $1::date AND $2::date
+       ORDER BY tarefas.finalizado ASC, tarefas.prazo ASC NULLS LAST, tarefas.id DESC`,
+      [dataInicial, dataFinal]
+    );
+
+    res.status(200).json({
+      inicio: dataInicial,
+      fim: dataFinal,
+      total: result.rows.length,
+      concluidas: result.rows.filter((tarefa) => tarefa.finalizado).length,
+      pendentes: result.rows.filter((tarefa) => !tarefa.finalizado).length,
+      tarefas: result.rows,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/relatorio/pdf", autenticarAdmin, async (req, res) => {
   try {
     const hoje = new Intl.DateTimeFormat("en-CA", {

@@ -54,6 +54,153 @@
   font: inherit;
 }
 
+.btnVisualizarRelatorio {
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #fff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btnVisualizarRelatorio:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.erroRelatorio {
+  margin: 0;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.relatorioTarefasPainel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgb(15 23 42 / 4%);
+}
+
+.relatorioTarefasResumo {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.relatorioTarefasResumo p {
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.relatorioTarefasResumo h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.25rem;
+}
+
+.relatorioTarefasResumo > div:first-child > span {
+  display: inline-block;
+  margin-top: 6px;
+  color: #64748b;
+}
+
+.relatorioTarefasMetricas {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-content: start;
+  gap: 5px 8px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.relatorioTarefasMetricas strong {
+  color: #166534;
+  text-align: right;
+}
+
+.relatorioTarefasLista {
+  display: grid;
+  gap: 10px;
+}
+
+.relatorioTarefaItem {
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 13px 15px;
+  background: #f8fafc;
+}
+
+.relatorioTarefaTopo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.relatorioTarefaTopo h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.relatorioTarefaTopo > span {
+  border-radius: 99px;
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tarefaRelatorioFeita {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tarefaRelatorioPendente {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.relatorioTarefaItem > p {
+  margin: 8px 0;
+  color: #475569;
+}
+
+.relatorioTarefaDetalhes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.relatorioTarefaItem .relatorioTarefaObservacao {
+  margin: 9px 0 0;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.relatorioTarefasVazio {
+  margin: 0;
+  padding: 18px;
+  color: #64748b;
+  text-align: center;
+}
+
 .btnRelatorio {
   min-height: 38px;
   border: 0;
@@ -64,6 +211,8 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btnRelatorio:disabled {
@@ -237,4 +386,16 @@
 
 .tabelaLinhaVazia {
   color: #777;
+}
+
+@media (max-width: 900px) {
+  .buscaTarefasCabecalho,
+  .relatorioTarefasControles {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .relatorioTarefasResumo {
+    flex-direction: column;
+  }
 }
