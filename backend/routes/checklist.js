@@ -170,12 +170,23 @@ router.put("/itens/:id", autenticarAdmin, async (req, res) => {
 router.put("/itens/:id/mover", autenticarAdmin, async (req, res) => {
 	const itemId = Number(req.params.id);
 	const direcao = req.body.direcao;
+	const destinoItemId = req.body.destino_item_id === undefined
+		? null
+		: Number(req.body.destino_item_id);
+	const posicao = req.body.posicao;
 
 	if (!Number.isInteger(itemId) || itemId <= 0) {
 		return res.status(400).json({ erro: "Identificador do item inválido." });
 	}
-	if (direcao !== "cima" && direcao !== "baixo") {
+	if (destinoItemId === null && direcao !== "cima" && direcao !== "baixo") {
 		return res.status(400).json({ erro: "A direção deve ser 'cima' ou 'baixo'." });
+	}
+	if (destinoItemId !== null && (
+		!Number.isInteger(destinoItemId) ||
+		destinoItemId <= 0 ||
+		(posicao !== "antes" && posicao !== "depois")
+	)) {
+		return res.status(400).json({ erro: "O destino e a posição do item são inválidos." });
 	}
 
 	const client = await pool.connect();
@@ -196,26 +207,48 @@ router.put("/itens/:id/mover", autenticarAdmin, async (req, res) => {
 			return res.status(404).json({ erro: "Item não encontrado." });
 		}
 
-		const indiceDestino = direcao === "cima" ? indice - 1 : indice + 1;
-		if (indiceDestino >= 0 && indiceDestino < itensOrdenados.length) {
-			[itensOrdenados[indice], itensOrdenados[indiceDestino]] =
-				[itensOrdenados[indiceDestino], itensOrdenados[indice]];
+		if (destinoItemId !== null) {
+			const indiceDestinoOriginal = itensOrdenados.findIndex(
+				(item) => Number(item.id) === destinoItemId
+			);
+			if (indiceDestinoOriginal === -1) {
+				await client.query("ROLLBACK");
+				return res.status(404).json({ erro: "Item de destino não encontrado." });
+			}
 
-			for (let posicao = 0; posicao < itensOrdenados.length; posicao += 1) {
-				await client.query(
-					"UPDATE checklist_itens SET ordem = $1 WHERE id = $2",
-					[posicao + 1, itensOrdenados[posicao].id]
+			if (destinoItemId !== itemId) {
+				const [itemMovido] = itensOrdenados.splice(indice, 1);
+				const indiceDestino = itensOrdenados.findIndex(
+					(item) => Number(item.id) === destinoItemId
 				);
+				itensOrdenados.splice(
+					indiceDestino + (posicao === "depois" ? 1 : 0),
+					0,
+					itemMovido
+				);
+			}
+		} else {
+			const indiceDestino = direcao === "cima" ? indice - 1 : indice + 1;
+			if (indiceDestino >= 0 && indiceDestino < itensOrdenados.length) {
+				[itensOrdenados[indice], itensOrdenados[indiceDestino]] =
+					[itensOrdenados[indiceDestino], itensOrdenados[indice]];
 			}
 		}
 
-		await client.query("COMMIT");
+		for (let novaPosicao = 0; novaPosicao < itensOrdenados.length; novaPosicao += 1) {
+			await client.query(
+				"UPDATE checklist_itens SET ordem = $1 WHERE id = $2",
+				[novaPosicao + 1, itensOrdenados[novaPosicao].id]
+			);
+		}
+
 		const resultado = await client.query(
 			`SELECT id AS item_id, descricao, ordem
 			 FROM checklist_itens
 			 WHERE ativo = TRUE
 			 ORDER BY ordem, id`
 		);
+		await client.query("COMMIT");
 		res.status(200).json({ itens: resultado.rows });
 	} catch (error) {
 		await client.query("ROLLBACK");

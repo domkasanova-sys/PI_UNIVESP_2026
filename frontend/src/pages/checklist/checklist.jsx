@@ -45,6 +45,8 @@ function Checklist() {
   const [relatorio, setRelatorio] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [atualizandoItemId, setAtualizandoItemId] = useState(null);
+  const [itemArrastadoId, setItemArrastadoId] = useState(null);
+  const [itemAlvoArrastadoId, setItemAlvoArrastadoId] = useState(null);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [periodoRelatorio, setPeriodoRelatorio] = useState(() => {
@@ -251,12 +253,12 @@ function Checklist() {
     }
   }
 
-  async function moverItem(itemId, direcao) {
+  async function moverItem(itemId, movimento) {
     try {
       setAtualizandoItemId(itemId);
       setErro("");
       setMensagem("");
-      const { data } = await api.put(`/checklist/itens/${itemId}/mover`, { direcao });
+      const { data } = await api.put(`/checklist/itens/${itemId}/mover`, movimento);
       const idsOrdenados = data.itens.map((item) => Number(item.item_id));
       setItens((atuais) => {
         const itensPorId = new Map(atuais.map((item) => [Number(item.item_id), item]));
@@ -268,6 +270,26 @@ function Checklist() {
     } finally {
       setAtualizandoItemId(null);
     }
+  }
+
+  function iniciarArraste(event, itemId) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(itemId));
+    setItemArrastadoId(itemId);
+  }
+
+  function soltarItem(event, destinoItemId) {
+    event.preventDefault();
+    const itemId = Number(event.dataTransfer.getData("text/plain")) || itemArrastadoId;
+    setItemAlvoArrastadoId(null);
+    setItemArrastadoId(null);
+    if (!itemId || itemId === destinoItemId) return;
+
+    const limites = event.currentTarget.getBoundingClientRect();
+    const posicao = event.clientY < limites.top + limites.height / 2
+      ? "antes"
+      : "depois";
+    moverItem(itemId, { destino_item_id: destinoItemId, posicao });
   }
 
   async function alterarConclusao(itemId, concluido) {
@@ -515,8 +537,24 @@ function Checklist() {
           ) : itens.length ? (
             itens.map((item, indice) => (
               <div
-                className={`checklistItem${item.concluido ? " isDone" : ""}`}
+                className={[
+                  "checklistItem",
+                  item.concluido && "isDone",
+                  itemArrastadoId === item.item_id && "isDragging",
+                  itemAlvoArrastadoId === item.item_id && "isDragTarget",
+                ].filter(Boolean).join(" ")}
                 key={item.item_id}
+                onDragOver={(event) => {
+                  if (itemArrastadoId !== null && itemArrastadoId !== item.item_id) {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    setItemAlvoArrastadoId(item.item_id);
+                  }
+                }}
+                onDragLeave={() => {
+                  if (itemAlvoArrastadoId === item.item_id) setItemAlvoArrastadoId(null);
+                }}
+                onDrop={(event) => soltarItem(event, item.item_id)}
               >
                 <input
                   type="checkbox"
@@ -539,7 +577,22 @@ function Checklist() {
                     <span className="checklistItemText">{item.descricao}</span>
                   )}
                   {usuarioEhAdmin && editandoItemId !== item.item_id && (
-                    <div className="checklistOrderActions" aria-label={`Ordenar ${item.descricao}`}>
+                    <div className="checklistItemOrderControls" aria-label={`Ordenar ${item.descricao}`}>
+                      <button
+                        type="button"
+                        className="checklistDragHandle"
+                        draggable={atualizandoItemId === null}
+                        aria-label={`Arrastar ${item.descricao} para outra posição`}
+                        title="Arraste para mudar a posição"
+                        onDragStart={(event) => iniciarArraste(event, item.item_id)}
+                        onDragEnd={() => {
+                          setItemArrastadoId(null);
+                          setItemAlvoArrastadoId(null);
+                        }}
+                      >
+                        ⠿
+                      </button>
+                      <div className="checklistOrderActions">
                       <button
                         type="button"
                         aria-label={`Mover ${item.descricao} para cima`}
@@ -558,6 +611,7 @@ function Checklist() {
                       >
                         ↓
                       </button>
+                      </div>
                     </div>
                   )}
                 </div>
