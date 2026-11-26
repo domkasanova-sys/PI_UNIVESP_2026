@@ -333,55 +333,61 @@ function Checklist() {
                 >
                   {reiniciando ? "Reiniciando..." : "Reiniciar checklist"}
                 </button>
-                <button
-                  className="checklistButton checklistButtonSecondary"
-                  type="button"
-                  onClick={visualizarRelatorio}
-                  disabled={
-                    carregandoRelatorio ||
-                    baixandoRelatorio ||
-                    !periodoRelatorio.inicio ||
-                    !periodoRelatorio.fim ||
-                    periodoRelatorio.inicio > periodoRelatorio.fim
-                  }
-                >
-                  {carregandoRelatorio ? "Carregando..." : "Visualizar relatório"}
-                </button>
-                <button
-                  className="checklistButton checklistButtonPrimary"
-                  type="button"
-                  onClick={baixarRelatorio}
-                  disabled={
-                    baixandoRelatorio ||
-                    reiniciando ||
-                    gerando ||
-                    !periodoRelatorio.inicio ||
-                    !periodoRelatorio.fim ||
-                    periodoRelatorio.inicio > periodoRelatorio.fim
-                  }
-                >
-                  {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
-                </button>
-                <input
-                  className="checklistDateInput"
-                  type="date"
-                  aria-label="Início do período do relatório"
-                  value={periodoRelatorio.inicio}
-                  onChange={(event) => setPeriodoRelatorio((periodo) => ({
-                    ...periodo,
-                    inicio: event.target.value,
-                  }))}
-                />
-                <input
-                  className="checklistDateInput"
-                  type="date"
-                  aria-label="Fim do período do relatório"
-                  value={periodoRelatorio.fim}
-                  onChange={(event) => setPeriodoRelatorio((periodo) => ({
-                    ...periodo,
-                    fim: event.target.value,
-                  }))}
-                />
+                <div className="checklistReportControls">
+                  <div className="checklistDateRange">
+                    <input
+                      className="checklistDateInput"
+                      type="date"
+                      aria-label="Início do período do relatório"
+                      value={periodoRelatorio.inicio}
+                      onChange={(event) => setPeriodoRelatorio((periodo) => ({
+                        ...periodo,
+                        inicio: event.target.value,
+                      }))}
+                    />
+                    <input
+                      className="checklistDateInput"
+                      type="date"
+                      aria-label="Fim do período do relatório"
+                      value={periodoRelatorio.fim}
+                      onChange={(event) => setPeriodoRelatorio((periodo) => ({
+                        ...periodo,
+                        fim: event.target.value,
+                      }))}
+                    />
+                  </div>
+                  <div className="checklistReportButtons">
+                    <button
+                      className="checklistButton checklistButtonSecondary"
+                      type="button"
+                      onClick={visualizarRelatorio}
+                      disabled={
+                        carregandoRelatorio ||
+                        baixandoRelatorio ||
+                        !periodoRelatorio.inicio ||
+                        !periodoRelatorio.fim ||
+                        periodoRelatorio.inicio > periodoRelatorio.fim
+                      }
+                    >
+                      {carregandoRelatorio ? "Carregando..." : "Visualizar relatório"}
+                    </button>
+                    <button
+                      className="checklistButton checklistButtonReport"
+                      type="button"
+                      onClick={baixarRelatorio}
+                      disabled={
+                        baixandoRelatorio ||
+                        reiniciando ||
+                        gerando ||
+                        !periodoRelatorio.inicio ||
+                        !periodoRelatorio.fim ||
+                        periodoRelatorio.inicio > periodoRelatorio.fim
+                      }
+                    >
+                      {baixandoRelatorio ? "Gerando PDF..." : "Baixar relatório PDF"}
+                    </button>
+                  </div>
+                </div>
               </>
             )}
             <button

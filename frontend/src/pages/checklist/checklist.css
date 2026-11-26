@@ -40,13 +40,40 @@
 
 .checklistHeaderActions {
   display: flex;
+  align-items: flex-start;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
 }
 
+.checklistReportControls {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.checklistDateRange {
+  display: flex;
+  gap: 8px;
+}
+
+.checklistDateRange .checklistDateInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.checklistReportButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checklistReportButtons .checklistButton {
+  width: 100%;
+}
+
 .checklistDateInput {
-  min-height: 44px;
+  min-height: 38px;
   border: 1px solid #dbe2ea;
   border-radius: 10px;
   padding: 0 10px;
@@ -92,6 +119,22 @@
 
 .checklistButtonSecondary:hover:not(:disabled) {
   background: #f8fafc;
+}
+
+.checklistButtonReport {
+  min-height: 29px;
+  border: 1px solid #dbe2ea;
+  border-radius: 7px;
+  padding: 0 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.checklistButtonReport:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .checklistButtonDanger {
@@ -474,6 +517,11 @@
   .checklistHeaderActions {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .checklistReportControls {
+    flex: 1;
+    min-width: min(100%, 280px);
   }
 
   .checklistHeaderActions .checklistButton {

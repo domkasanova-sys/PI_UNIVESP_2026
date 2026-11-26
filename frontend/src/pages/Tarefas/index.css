@@ -202,17 +202,23 @@
 }
 
 .btnRelatorio {
-  min-height: 38px;
-  border: 0;
+  min-height: 27px;
+  border: 1px solid #dbe2ea;
   border-radius: 6px;
-  padding: 0 16px;
-  background: #166534;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 0 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.btnRelatorio:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .btnRelatorio:disabled {
